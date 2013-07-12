@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <title>test_webgl</title>
+  </head>
+
+  <body>
+    <p id="text"></p>
+    <canvas id="canvas0" width="600" height="400" style="border: 1px solid red">
+      Your Browser Doesn't Support HTML5's Canvas.
+    </canvas>
+    <script type="application/dart" src="test_webgl.dart"></script>
+    <!-- for this next line to work, your pubspec.yaml file must have a dependency on 'browser' -->
+    <script src="packages/browser/dart.js"></script>
+  </body>
+</html>

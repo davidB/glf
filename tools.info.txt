@@ -1,0 +1,7 @@
+Pipeline (for plob inspiration):
+
+* [Game Development Tools](http://gamedevelopmenttools.com/) book blog
+* [FinalBuilder](http://www.finalbuilder.com/FinalBuilder/Feature-Tour.aspx)
+
+Generator:
+* [Ζέ·φυ·ρος / Ά·νε·μος](http://www.zephyrosanemos.com/) include Project Windstorm (a terrain generator,...)
