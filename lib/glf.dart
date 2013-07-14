@@ -225,9 +225,18 @@ void injectMatrix3(ProgramContext ctx, Matrix3 mat, String sname) {
 //  ;
 //}
 
-//TODO optimize avoid Matrix3 creation
-Matrix3 makeNormalMatrix(Matrix4 transforms){
-  return transforms.getRotation()
+makeNormalMatrix(Matrix4 transforms, Matrix3 out){
+  // extract rotation
+  out.storage[0] = transforms.storage[0];
+  out.storage[1] = transforms.storage[1];
+  out.storage[2] = transforms.storage[2];
+  out.storage[3] = transforms.storage[4];
+  out.storage[4] = transforms.storage[5];
+  out.storage[5] = transforms.storage[6];
+  out.storage[6] = transforms.storage[8];
+  out.storage[7] = transforms.storage[9];
+  out.storage[8] = transforms.storage[10];
+  return out
     ..invert()
     ..transpose()
   ;

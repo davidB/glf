@@ -153,7 +153,8 @@ class MeshDef {
       vertices[i + 1] = v3.y;
       vertices[i + 2] = v3.z;
     }
-    var nm = makeNormalMatrix(m);
+    var nm = new Matrix3.zero();
+    makeNormalMatrix(m, nm);
     for (var i = 0; i < normals.length; i += 3) {
       v3.x = normals[i + 0];
       v3.y = normals[i + 1];
