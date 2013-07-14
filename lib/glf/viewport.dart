@@ -48,16 +48,14 @@ class Viewport {
   Viewport();
 
   factory Viewport.defaultSettings(CanvasElement canvas) {
-    return new Viewport()
-    ..x = 0
-    ..y = 0
-    ..viewWidth = canvas.width
-    ..viewHeight = canvas.height
-    ..camera.aspectRatio = canvas.width.toDouble() / canvas.height.toDouble()
+    var b = new Viewport()
     ..camera.fovRadians = degrees2radians * 45.0
     ..camera.near = 1.0
     ..camera.far = 100.0
+    ..fullCanvas(canvas)
+    ..registerOnResizeCanvas(canvas)
     ;
+    return b;
   }
 
   _setup(RenderingContext gl) {
@@ -102,16 +100,27 @@ class Viewport {
 
   makeRequestRunOn() => new RequestRunOn()
     ..setup = _setup
+//    ..beforeAll = ((gl) => autoScale(gl.canvas))
     ..onAddProgramCtx = _autoRegisterOnProgram
   ;
 
 
+  fullCanvas(CanvasElement canvas) {
+    var dpr = window.devicePixelRatio;     // retina
+    //var dpr = 1;
+    viewWidth = (dpr * canvas.clientWidth).round();//parseInt(canvas.style.width);
+    viewHeight = (dpr * canvas.clientHeight).round(); //parseInt(canvas.style.height);
+    x = 0;
+    y = 0;
+    canvas.width = viewWidth;
+    canvas.height = viewHeight;
+    camera.aspectRatio = viewWidth.toDouble() / viewHeight.toDouble();
+    camera.updateProjectionMatrix();
+  }
+
   registerOnResizeCanvas(CanvasElement canvas) {
     var onResize = (evt){
-      viewWidth = canvas.width;
-      viewHeight = canvas.height;
-      camera.aspectRatio = canvas.width.toDouble() / canvas.height.toDouble();
-      camera.updateProjectionMatrix();
+      fullCanvas(canvas);
     };
     return Window.resizeEvent.forTarget(canvas).listen(onResize);
   }
