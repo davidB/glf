@@ -34,10 +34,11 @@ class Main {
   var _showNormalsUI = query('#showNormals') as CheckboxInputElement;
   var _statsUpdateUI = query('#statsUpdate') as PreElement;
   var _statsLoopUI = query('#statsLoop') as PreElement;
-
   var req0 = null;
   var upd0 = null;
   var reqN = null;
+  var _programCtxN = null;
+  var _programCtxCache = new glf.ProgramContextCache();
 
   glf.ProgramsRunner _prunner = null;
   final onUpdate = new List<Function>();
@@ -45,6 +46,7 @@ class Main {
   Main(this.gl);
 
   start() {
+    _programCtxN = glf.loadProgramContext(gl, Uri.parse("packages/glf/shaders/default.vert"), Uri.parse("packages/glf/shaders/default.vert"));
     _prunner = new glf.ProgramsRunner(gl);
 
     _prunner.register(new glf.RequestRunOn()
@@ -70,9 +72,9 @@ class Main {
         gl.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
         //gl.clear(GL.COLOR_BUFFER_BIT);
       }
-      ..onRemoveProgramCtx = (prunner, ctx) {
-        ctx.delete();
-      }
+//      ..onRemoveProgramCtx = (prunner, ctx) {
+//        ctx.delete();
+//      }
     );
 
     // Camera default setting for perspective use canvas area full
@@ -152,7 +154,7 @@ class Main {
     });
   }
 
-  makeShaderProgram(gl) => new glf.ProgramContext(gl, _vertexUI.getValue(), _fragmentUI.getValue());
+  makeShaderProgram(gl) => _programCtxCache.find(gl, _vertexUI.getValue(), _fragmentUI.getValue());
 
   makeMeshDef(){
     var sub = int.parse(_subdivisionMeshUI.value);
@@ -232,22 +234,24 @@ class Main {
     if (_showNormalsUI.checked) {
       var mdNormal = glf.extractNormals(md);
       var meshNormal = new glf.Mesh()..setData(ctx.gl, mdNormal);
-      reqN = new glf.RequestRunOn()
-        ..ctx = ctx
-        ..at = (ctx) {
-          ctx.gl.uniform1i(ctx.getUniformLocation('useLights'), 0);
-          ctx.gl.uniform3f(ctx.getUniformLocation(glf.SFNAME_COLORS), 0.8, 0.8, 0.8);
-          glf.makeNormalMatrix(transforms, normalMatrix);
-          glf.injectMatrix4(ctx, transforms, glf.SFNAME_MODELMATRIX);
-          glf.injectMatrix3(ctx, normalMatrix, glf.SFNAME_NORMALMATRIX);
-          glf.injectTexture(ctx, tex, 0);
-          glf.injectTexture(ctx, texNormal, 1);
-          // vertices of the mesh can be modified in update loop, so update the data to GPU
-          //mesh2.vertices.setData(ctx.gl, md2.vertices);
-          meshNormal.injectAndDraw(ctx);
-        }
-      ;
-      _prunner.register(reqN);
+      _programCtxN.then((ctxN) {
+        reqN = new glf.RequestRunOn()
+          ..ctx = ctxN
+          ..at = (ctx) {
+            ctx.gl.uniform1i(ctx.getUniformLocation('useLights'), 0);
+            ctx.gl.uniform3f(ctx.getUniformLocation(glf.SFNAME_COLORS), 0.8, 0.8, 0.8);
+            glf.makeNormalMatrix(transforms, normalMatrix);
+            glf.injectMatrix4(ctx, transforms, glf.SFNAME_MODELMATRIX);
+            glf.injectMatrix3(ctx, normalMatrix, glf.SFNAME_NORMALMATRIX);
+            glf.injectTexture(ctx, tex, 0);
+            glf.injectTexture(ctx, texNormal, 1);
+            // vertices of the mesh can be modified in update loop, so update the data to GPU
+            //mesh2.vertices.setData(ctx.gl, md2.vertices);
+            meshNormal.injectAndDraw(ctx);
+          }
+        ;
+        _prunner.register(reqN);
+      });
     }
   }
 }
