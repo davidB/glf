@@ -42,15 +42,17 @@ class ProgramContext {
 
   final _attributes = new Map<String, int>();
   final _uniforms = new Map<String, UniformLocation>();
+  Shader _vertShader;
+  Shader _fragShader;
 
   // following field are stored in ProgramContext to avoid usage on an associative array ProgramContext -> RunOnProgramContext
   final _befores = new List<RunOnProgramContext>();
   final _ats = new List<RunOnProgramContext>();
 
   ProgramContext(this.gl, String vertSrc, String fragSrc) {
-    var vertShader = _compileShader(gl, vertSrc, VERTEX_SHADER);
-    var fragShader = _compileShader(gl, fragSrc, FRAGMENT_SHADER);
-    program = _linkProgram(gl, vertShader, fragShader);
+    _vertShader = _compileShader(gl, vertSrc, VERTEX_SHADER);
+    _fragShader = _compileShader(gl, fragSrc, FRAGMENT_SHADER);
+    program = _linkProgram(gl, _vertShader, _fragShader);
   }
 
   int getAttribLocation(String v) {
@@ -69,6 +71,23 @@ class ProgramContext {
       _uniforms[v] = b;
     }
     return b;
+  }
+
+  delete() {
+    if (_fragShader != null) {
+      gl.detachShader(program, _fragShader);
+      gl.deleteShader(_fragShader);
+      _fragShader = null;
+    }
+    if (_vertShader != null) {
+      gl.detachShader(program, _vertShader);
+      gl.deleteShader(_vertShader);
+      _vertShader = null;
+    }
+    if (program != null) {
+     gl.deleteProgram(program);
+     program = null;
+    }
   }
 }
 
@@ -91,7 +110,7 @@ class ProgramsRunner {
 
     if (req.beforeAll != null) _beforeAlls.add(req.beforeAll);
     if (req.onAddProgramCtx != null) _onAddProgramCtxs.add(req.onAddProgramCtx);
-    if (req.onRemoveProgramCtx != null) _onAddProgramCtxs.add(req.onRemoveProgramCtx);
+    if (req.onRemoveProgramCtx != null) _onRemoveProgramCtxs.add(req.onRemoveProgramCtx);
 
     if (req.ctx != null) {
       var isNew = !_ctxs.contains(req.ctx);
@@ -202,6 +221,7 @@ _linkProgram(RenderingContext gl, Shader vertex, Shader fragment, [deleteShaderO
   }
   return program;
 }
+
 
 void injectMatrix4(ProgramContext ctx, Matrix4 mat, String sname) {
   var u = ctx.getUniformLocation(sname);
