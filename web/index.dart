@@ -25,12 +25,19 @@ class Main {
   var _vertexUI; // = query('#vertex') as TextAreaElement;
   var _fragmentUI; //= query('#fragment') as TextAreaElement;
   var _selectShaderUI = query('#selectShader') as SelectElement;
+  var _selectMeshUI = query('#selectMesh') as SelectElement;
+  var _subdivisionMeshUI = query('#subdivisionMesh') as InputElement;
   var _loadShaderUI = query('#loadShader') as ButtonElement;
   var _applyShaderUI = query('#applyShader') as ButtonElement;
-  var _errorUI = query('#errorTxt') as DivElement;
+  var _errorUI = query('#errorTxt') as PreElement;
+  var _showWireframeUI = query('#showWireframe') as CheckboxInputElement;
+  var _showNormalsUI = query('#showNormals') as CheckboxInputElement;
+  var _statsUpdateUI = query('#statsUpdate') as PreElement;
+  var _statsLoopUI = query('#statsLoop') as PreElement;
 
   var req0 = null;
   var upd0 = null;
+  var reqN = null;
 
   glf.ProgramsRunner _prunner = null;
   final onUpdate = new List<Function>();
@@ -48,11 +55,11 @@ class Main {
           gl.depthFunc(GL.LEQUAL);
           //gl.depthFunc(GL.LESS); // default value
           gl.enable(GL.DEPTH_TEST);
-        } else {
-          // blend
-          gl.disable(GL.DEPTH_TEST);
-          gl.blendFunc(GL.SRC_ALPHA, GL.ONE);
-          gl.enable(GL.BLEND);
+//        } else {
+//          // blend
+//          gl.disable(GL.DEPTH_TEST);
+//          gl.blendFunc(GL.SRC_ALPHA, GL.ONE);
+//          gl.enable(GL.BLEND);
         }
         gl.colorMask(true, true, true, true);
       }
@@ -63,6 +70,9 @@ class Main {
         gl.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
         //gl.clear(GL.COLOR_BUFFER_BIT);
       }
+      ..onRemoveProgramCtx = (prunner, ctx) {
+        ctx.delete();
+      }
     );
 
     // Camera default setting for perspective use canvas area full
@@ -72,7 +82,30 @@ class Main {
     _prunner.register(viewport.makeRequestRunOn());
 
     var tprevious = 0;
+    var statsU = new StartStopWatch()
+      ..displayFct = (stats, now) {
+        if (now - stats.displayLast > 1000) {
+          stats.displayLast = now;
+          var msg = "avg : ${stats.avg}\nmax : ${stats.max}\nmin : ${stats.min}\nfps : ${1000/stats.avg}\n";
+          _statsUpdateUI.text = msg;
+          if (now - stats.resetLast > 3000) stats.reset();
+        }
+      }
+    ;
+    var statsL = new StartStopWatch()
+      ..displayFct = (stats, now) {
+        if (now - stats.displayLast > 1000) {
+          stats.displayLast = now;
+          var msg = "avg : ${stats.avg}\nmax : ${stats.max}\nmin : ${stats.min}\nfps : ${1000/stats.avg}\n";
+          _statsLoopUI.text = msg;
+          if (now - stats.resetLast > 3000) stats.reset();
+        }
+      }
+    ;
+    var lastDisplay = 0;
     update(t){
+      statsU.start();
+      window.animationFrame.then(update);
       // rule to modify transforms of the global mesh
       var dt = t - tprevious;
       tprevious = t;
@@ -82,7 +115,9 @@ class Main {
       onUpdate.forEach((f) => f(dt));
       // render (run shader's program)
       _prunner.run();
-      window.animationFrame.then(update);
+      statsU.stop();
+      statsL.stop();
+      statsL.start();
     };
     window.animationFrame.then(update);
     initEditors();
@@ -119,8 +154,23 @@ class Main {
 
   makeShaderProgram(gl) => new glf.ProgramContext(gl, _vertexUI.getValue(), _fragmentUI.getValue());
 
+  makeMeshDef(){
+    var sub = int.parse(_subdivisionMeshUI.value);
+    switch(_selectMeshUI.value) {
+      case 'box24' :
+        return glf.makeMeshDef_cube24Vertices(dx: 2.0, dy: 1.0, dz: 0.5, ty: 1.0);
+      case 'cube8' :
+        return glf.makeMeshDef_cube8Vertices(dx: 0.5, dy: 0.5, dz: 0.5);
+      case 'sphereL':
+        return glf.makeMeshDef_sphere(subdivisionsAxis : sub, subdivisionsHeight : sub);
+      default:
+        return glf.makeMeshDef_cube24Vertices(dx: 0.5, dy: 0.5, dz: 0.5);
+    }
+  }
+
   apply() {
     try {
+      _errorUI.text = '';
       _apply0();
     }catch(e) {
       _errorUI.text = e.toString();
@@ -135,33 +185,26 @@ class Main {
     var transforms = new Matrix4.identity();
     var normalMatrix = new Matrix3.zero();
 
-    //var md = glf.makeMeshDef_cube8Vertices(dx: 1.0, dy: 1.0, dz: 0.5);
-    var md = glf.makeMeshDef_cube24Vertices(dx: 2.0, dy: 1.0, dz: 0.5, ty: 1.0);
-    //var md = glf.makeMeshDef_sphere(subdivisionsAxis : 16, subdivisionsHeight : 16);
-    //md.lines = glf.extractWireframe(md.triangles);
-    //md.triangles = null;
-    var md2 = glf.extractNormals(md);
-    //var f = loadShaderCode("./test_webgl");
-    //var f = loadShaderCode("packages/glf/shaders/normal");
+    var md = makeMeshDef();
+    if (_showWireframeUI.checked) {
+      md.lines = glf.extractWireframe(md.triangles);
+      md.triangles = null;
+    }
+    var mesh = new glf.Mesh()..setData(ctx.gl, md);
 
     // keep ref to RequestRunOn to be able to register/unregister (show/hide)
     var tex = glf.createTexture(ctx.gl, new Uint8List.fromList([120, 120, 120, 255]), Uri.parse("_images/dirt.jpg"));
-    //var tex = glf.createTexture(ctx.gl, new Uint8List.fromList([120, 120, 120, 255]));
     var texNormal = glf.createTexture(ctx.gl, new Uint8List.fromList([0, 0, 120]), Uri.parse("_images/shaders_offest_normalmap.jpg"));
-    var mesh = new glf.Mesh()..setData(ctx.gl, md);
 
     if (req0 != null) {
       _prunner.unregister(req0);
       req0 = null;
     }
-
     req0 = new glf.RequestRunOn()
       ..ctx = ctx
-      ..before = (glf.ProgramContext  ctx) {
-        ctx.gl.uniform1i(ctx.getUniformLocation('useLights'), 1);
-        ctx.gl.uniform3f(ctx.getUniformLocation(glf.SFNAME_COLORS), 0.5, 0.5, 0.5);
-      }
       ..at = (ctx) {
+        ctx.gl.uniform3f(ctx.getUniformLocation(glf.SFNAME_COLORS), 0.5, 0.5, 0.5);
+        ctx.gl.uniform1i(ctx.getUniformLocation('useLights'), 1);
         glf.makeNormalMatrix(transforms, normalMatrix);
         glf.injectMatrix4(ctx, transforms, glf.SFNAME_MODELMATRIX);
         glf.injectMatrix3(ctx, normalMatrix, glf.SFNAME_NORMALMATRIX);
@@ -182,24 +225,78 @@ class Main {
     onUpdate.add(upd0);
 
 
-//    var mesh2 = new glf.Mesh()..setData(ctx.gl, md2);
-//    var req2 = new glf.RequestRunOn()
-//      ..ctx = ctx
-//      ..before = (ctx) {
-//        ctx.gl.uniform1i(ctx.getUniformLocation('useLights'), 1);
-//      }
-//      ..at = (ctx) {
-//        glf.makeNormalMatrix(transforms, normalMatrix);
-//        glf.injectMatrix4(ctx, transforms, glf.SFNAME_MODELMATRIX);
-//        glf.injectMatrix3(ctx, normalMatrix, glf.SFNAME_NORMALMATRIX);
-//        glf.injectTexture(ctx, tex, 0);
-//        glf.injectTexture(ctx, texNormal, 1);
-//        // vertices of the mesh can be modified in update loop, so update the data to GPU
-//        //mesh2.vertices.setData(ctx.gl, md2.vertices);
-//        mesh2.injectAndDraw(ctx);
-//      }
-//      ;
-//    //prunner.register(req2);
-//    });
+    if (reqN != null) {
+      _prunner.unregister(reqN);
+      reqN = null;
+    }
+    if (_showNormalsUI.checked) {
+      var mdNormal = glf.extractNormals(md);
+      var meshNormal = new glf.Mesh()..setData(ctx.gl, mdNormal);
+      reqN = new glf.RequestRunOn()
+        ..ctx = ctx
+        ..at = (ctx) {
+          ctx.gl.uniform1i(ctx.getUniformLocation('useLights'), 0);
+          ctx.gl.uniform3f(ctx.getUniformLocation(glf.SFNAME_COLORS), 0.8, 0.8, 0.8);
+          glf.makeNormalMatrix(transforms, normalMatrix);
+          glf.injectMatrix4(ctx, transforms, glf.SFNAME_MODELMATRIX);
+          glf.injectMatrix3(ctx, normalMatrix, glf.SFNAME_NORMALMATRIX);
+          glf.injectTexture(ctx, tex, 0);
+          glf.injectTexture(ctx, texNormal, 1);
+          // vertices of the mesh can be modified in update loop, so update the data to GPU
+          //mesh2.vertices.setData(ctx.gl, md2.vertices);
+          meshNormal.injectAndDraw(ctx);
+        }
+      ;
+      _prunner.register(reqN);
+    }
   }
+}
+
+// in milliseconds ( like window.performance.now() )
+class StartStopWatch {
+  Function displayFct;
+  double displayLast = 0.0;
+  double resetLast = 0.0;
+  double min;
+  double max;
+  double total;
+  int count;
+  double _pstart;
+
+  final _perf = window.performance;
+
+  get avg => (count == 0) ? 0.0 : total/count;
+
+  StartStopWatch() {
+    reset();
+    start();
+  }
+
+  start() {
+    _pstart = _perf.now();
+  }
+
+  stop() {
+    var now = _perf.now();
+    store(now - _pstart);
+    if (displayFct != null) {
+      displayFct(this, now);
+    }
+  }
+
+  store(double t) {
+    if (min > t) min = t;
+    if (max < t) max = t;
+    count++;
+    total += t;
+  }
+
+  reset() {
+    resetLast = _perf.now();
+    min = double.MAX_FINITE;
+    max = double.MIN_POSITIVE;
+    total = 0.0;
+    count = 0;
+  }
+
 }

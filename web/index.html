@@ -10,30 +10,60 @@
     <script src="_vendors/codemirror/lib/codemirror.js"></script>
     <link rel="stylesheet" href="_vendors/codemirror/lib/codemirror.css">
     <script src="_vendors/codemirror/mode/glsl/glsl.js"></script>
+    <!--script src="http://benvanik.github.io/WebGL-Inspector/core/embed.js"></script-->
   </head>
 
   <body>
-    <h1>Viewer for test</h1>
-    <div>
-    <canvas id="canvas0" width="600" height="400" style="border: 1px solid red">
-      Your Browser Doesn't Support HTML5's Canvas.
-    </canvas>
-    <button id="applyShader" class="btn">Apply</button>
-    <div id="errorTxt">
+    <div class="container-fluid">
+    <div class="row-fluid">
+    <div class="span6">
+      <h1>Viewer for test</h1>
+      <canvas id="canvas0" style="border: 1px solid red; width:100%; height:400px">
+        Your Browser Doesn't Support HTML5's Canvas.
+      </canvas>
+      <br>
+      <button id="applyShader" class="btn" style="width:100%">Apply</button>
+      <br>
+      <label>Duration (ms) of update function:</label>
+      <pre id="statsUpdate"></pre>
+      <br>
+      <label>Duration (ms) of main loop:</label>
+      <pre id="statsLoop"></pre>
+      <br>
+      <label>Log</label>
+      <pre id="errorTxt"></pre>
     </div>
-    <div>
-    <h2>Shader</h2>
-    <select id="selectShader">
-      <option value="packages/glf/shaders/default">default</option>
-      <option value="packages/glf/shaders/normal">normal</option>
-      <option value="./demo0">demo0</option>
-    </select>
-    <button id="loadShader" class="btn">Load</button>
-    <label>Vertex</label>
-    <textarea id="vertex" cols="80" rows="30"></textarea>
-    <label>Fragment</label>
-    <textarea id="fragment" cols="80" rows="30"></textarea>
-
+    <div class="span6">
+      <fieldset>
+        <legend>Display</legend>
+        <label><input type="checkbox" id="showWireframe" name="showWireframe"></input> wireframes</label>
+        <label><input type="checkbox" id="showNormals" name="showNormals"></input> normals<label>
+      </fieldset>
+      <fieldset>
+        <legend>Mesh</legend>
+        <select id="selectMesh">
+          <option>cube24</option>
+          <option>cube8</option>
+          <option>box24</option>
+          <option>sphereL</option>
+        </select>
+        <label for="subdivisionMesh">SubDivision (min 2)</label><input id="subdivisionMesh" name="quantity" type="number" min="2" max="255" value="4"></input>
+      </fieldset>
+      <fieldset>
+        <legend>Shader</legend>
+        <select id="selectShader">
+          <option value="packages/glf/shaders/default">default</option>
+          <option value="packages/glf/shaders/normal">normal</option>
+          <option value="./demo0">demo0</option>
+        </select>
+        <button id="loadShader" class="btn">Load</button>
+        <label>Vertex</label>
+        <textarea id="vertex" cols="80" rows="30"></textarea>
+        <label>Fragment</label>
+        <textarea id="fragment" cols="80" rows="30"></textarea>
+      </fieldset>
+    </div>
+    </div>
     </div>
     <!-- for this next line to work, your pubspec.yaml file must have a dependency on 'browser' -->
     <script src="packages/browser/dart.js"></script>
