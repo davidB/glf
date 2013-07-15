@@ -5,6 +5,7 @@ description: another toolbox for webgl
 homepage: http://github.com/davidB/glf
 dependencies:
   browser: any
+  crypto: any
   vector_math: '>=1.3.0'
 dev_dependencies:
   asset_pack:

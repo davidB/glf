@@ -13,6 +13,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:web_gl';
 import 'dart:typed_data';
+import 'package:crypto/crypto.dart'; // for cache
 import 'package:vector_math/vector_math.dart';
 
 part 'glf/mesh.dart';
@@ -88,6 +89,22 @@ class ProgramContext {
      gl.deleteProgram(program);
      program = null;
     }
+  }
+}
+
+class ProgramContextCache {
+  final _cache = new Map<String, ProgramContext>();
+  find(gl, String vertSrc, String fragSrc) {
+    var s = new SHA1();
+    s.add(vertSrc.codeUnits);
+    s.add(fragSrc.codeUnits);
+    var key = CryptoUtils.bytesToHex(s.close());
+    var v = _cache[key];
+    if (v == null) {
+      v = new ProgramContext(gl, vertSrc, fragSrc);
+      _cache[key] = v;
+    }
+    return v;
   }
 }
 
