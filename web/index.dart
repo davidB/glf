@@ -161,6 +161,8 @@ class Main {
     switch(_selectMeshUI.value) {
       case 'box24' :
         return glf.makeMeshDef_cube24Vertices(dx: 2.0, dy: 1.0, dz: 0.5, ty: 1.0);
+      case 'box24-t' :
+        return glf.makeMeshDef_cube24Vertices(dx: 2.0, dy: 1.0, dz: 0.5, tx: 2.0, ty: 1.0, tz: 0.5);
       case 'cube8' :
         return glf.makeMeshDef_cube8Vertices(dx: 0.5, dy: 0.5, dz: 0.5);
       case 'sphereL':

@@ -3,7 +3,7 @@ part of glf;
 
 // MeshDef for primitives geometries
 
-makeMeshDef_plane({double dx : 1.0, double dy : 1.0}) {
+makeMeshDef_plane({double dx : 0.5, double dy : 0.5}) {
   return new MeshDef()
   ..vertices = new Float32List.fromList([
     -dx, -dy, 0.0,
@@ -35,7 +35,7 @@ makeMeshDef_plane({double dx : 1.0, double dy : 1.0}) {
 
 }
 
-makeMeshDef_cube8Vertices({double dx : 1.0, double dy : 1.0, double dz : 1.0}) {
+makeMeshDef_cube8Vertices({double dx : 0.5, double dy : 0.5, double dz : 0.5}) {
 return new MeshDef()
   ..vertices = new Float32List.fromList([
     //Front
@@ -102,7 +102,7 @@ return new MeshDef()
   ;
 }
 
-makeMeshDef_cube24Vertices({double dx : 1.0, double dy : 1.0, double dz : 1.0, double tx : 1.0, double ty : 1.0}) {
+makeMeshDef_cube24Vertices({double dx : 0.5, double dy : 0.5, double dz : 0.5, double tx : 1.0, double ty : 1.0, double tz : 1.0}) {
   return new MeshDef()
     ..vertices = new Float32List.fromList([
       // Front face
@@ -195,27 +195,27 @@ makeMeshDef_cube24Vertices({double dx : 1.0, double dy : 1.0, double dz : 1.0, d
        0.0, 0.0,
 
        // Top face
-       0.0,  ty,
+       0.0,  tz,
        0.0, 0.0,
         tx, 0.0,
-        tx,  ty,
+        tx,  tz,
 
        // Bottom face
-        tx,  ty,
-       0.0,  ty,
+        tx,  tz,
+       0.0,  tz,
        0.0, 0.0,
         tx, 0.0,
 
        // Right face
-        tx, 0.0,
-        tx,  ty,
+        tz, 0.0,
+        tz,  ty,
        0.0,  ty,
        0.0, 0.0,
 
        // Left face
        0.0, 0.0,
-        tx, 0.0,
-        tx,  ty,
+        tz, 0.0,
+        tz,  ty,
        0.0,  ty,
     ])
   ;

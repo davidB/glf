@@ -17,7 +17,7 @@
     <div class="container-fluid">
     <div class="row-fluid">
     <div class="span6">
-      <h1>Viewer for test</h1>
+      <h1>Viewer <sub>(for testing <a href="https://github.com/davidB/glfd">glf</a>)</sub></h1>
       <canvas id="canvas0" style="border: 1px solid red; width:100%; height:400px">
         Your Browser Doesn't Support HTML5's Canvas.
       </canvas>
@@ -40,11 +40,12 @@
         <label><input type="checkbox" id="showNormals" name="showNormals"></input> normals<label>
       </fieldset>
       <fieldset>
-        <legend>Mesh</legend>
+        <legend>Mesh w</legend>
         <select id="selectMesh">
           <option>cube24</option>
           <option>cube8</option>
           <option>box24</option>
+          <option>box24-t</option>
           <option>sphereL</option>
         </select>
         <label for="subdivisionMesh">SubDivision (min 2)</label><input id="subdivisionMesh" name="quantity" type="number" min="2" max="255" value="4"></input>
