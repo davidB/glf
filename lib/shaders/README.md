@@ -45,6 +45,7 @@ Some [Non-Photorealistic Rendering](http://en.wikipedia.org/wiki/Non-photorealis
   * [description](http://www.valvesoftware.com/publications/2007/NPAR07_IllustrativeRenderingInTeamFortress2.pdf) from Valve Software
   * [article by Eric Kurzmack ](http://www.sfdm.scad.edu/faculty/mkesson/vsfx419/wip/spring11/eric_kurzmack/toon.html)
   * [TeamFortress2Shader](http://wiki.unity3d.com/index.php/TeamFortress2Shader) from unity community
+* [NPR Sketch shader](http://www.clicktorelease.com/code/npr-shading/) postprocessing with GLSL Based on [Thomas Eichhorn's vvvv shader](http://www.thomaseichhorn.de/npr-sketch-shader-vvvv/).
 
 ## for Texture
 
