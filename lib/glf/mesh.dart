@@ -44,7 +44,7 @@ class Mesh {
   final normals = new Float32Buffer()
     ..sname = SFNAME_NORMALS;
   final texCoords = new Float32Buffer()
-    ..sname = SFNAME_TEXCOORDS
+    ..sname = SFNAME_TEXCOORDS + '0'
     ..spacing = 2
     ;
   final colors = new Float32Buffer()

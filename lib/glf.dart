@@ -23,12 +23,13 @@ part 'glf/viewport.dart';
 
 // follow OpenGL ES name but replace "gl_" prefix by "_" (see [GLSL QuickRef](http://mew.cx/glsl_quickref.pdf) )
 const SFNAME_VERTICES = "_Vertex";
-const SFNAME_TEXCOORDS = "_TexCoord0";
+const SFNAME_TEXCOORDS = "_TexCoord";
 const SFNAME_COLORS = "_Color";
 const SFNAME_NORMALS = "_Normal";
 const SFNAME_NORMALMATRIX = "_NormalMatrix";
 const SFNAME_MODELMATRIX = "_ModelMatrix";
 const SFNAME_VIEWMATRIX = "_ViewMatrix";
+const SFNAME_ROTATIONMATRIX = "_RotMatrix";
 const SFNAME_PROJECTIONMATRIX = "_ProjectionMatrix";
 const SFNAME_PROJECTIONVIEWMATRIX = "_ProjectionViewMatrix";
 
@@ -117,6 +118,7 @@ class ProgramsRunner {
   final _teardowns = new List<RunOnRenderingContext>();
   final _onAddProgramCtxs = new List<RunOnProgramContextRegistration>();
   final _onRemoveProgramCtxs = new List<RunOnProgramContextRegistration>();
+  final _autoData = new Map<String, RunOnProgramContext>();
 
   ProgramsRunner(this.gl);
 
@@ -128,6 +130,10 @@ class ProgramsRunner {
     if (req.beforeAll != null) _beforeAlls.add(req.beforeAll);
     if (req.onAddProgramCtx != null) _onAddProgramCtxs.add(req.onAddProgramCtx);
     if (req.onRemoveProgramCtx != null) _onRemoveProgramCtxs.add(req.onRemoveProgramCtx);
+    if (req.autoData != null) req.autoData.forEach((k, v){
+      _autoData[k] = v;
+      _ctxs.forEach((ctx) => ctx._befores.add(v));
+    });
 
     if (req.ctx != null) {
       var isNew = !_ctxs.contains(req.ctx);
@@ -137,8 +143,16 @@ class ProgramsRunner {
       if (req.before != null) req.ctx._befores.add(req.before);
       if (req.at != null) req.ctx._ats.add(req.at);
       if (isNew) {
+        _autoData.forEach((k,v) {
+          if (req.ctx.getUniformLocation(k) != null) {
+            req.ctx._befores.add(v);
+          }
+        });
         _onAddProgramCtxs.forEach((f)=> f(this, req.ctx));
       }
+    } else {
+      if (req.before != null) throw new Exception("try to register 'before' but no 'ctx' defined");
+      if (req.at != null) throw new Exception("try to register 'at' but no 'ctx' defined");
     }
   }
 
@@ -150,6 +164,10 @@ class ProgramsRunner {
     if (req.beforeAll != null) _beforeAlls.remove(req.beforeAll);
     if (req.onAddProgramCtx != null) _onAddProgramCtxs.remove(req.onAddProgramCtx);
     if (req.onRemoveProgramCtx != null) _onAddProgramCtxs.remove(req.onRemoveProgramCtx);
+    if (req.autoData != null) req.autoData.keys.forEach((k){
+      var v = _autoData.remove(k);
+      _ctxs.forEach((ctx) => ctx._befores.remove(v));
+    });
 
     if (req.ctx != null) {
       if (req.before != null) req.ctx._befores.remove(req.before);
@@ -163,6 +181,54 @@ class ProgramsRunner {
     }
   }
 
+  get frameBuffer => _frameBuf;
+  get frameTexture => _frameTex;
+
+  Framebuffer _frameBuf;
+  Renderbuffer _frameRenderBuf;
+  Texture _frameTex;
+
+  enableFrameBuffer([int width = -1, int height = -1]) {
+    disableFrameBuffer();
+    if (width < 0) width = gl.canvas.width;
+    if (height < 0) height = gl.canvas.height;
+
+    _frameBuf = gl.createFramebuffer();
+    gl.bindFramebuffer(FRAMEBUFFER, _frameBuf);
+
+    _frameTex = gl.createTexture();
+    gl.bindTexture(TEXTURE_2D, _frameTex);
+    gl.texImage2DTyped(TEXTURE_2D, 0, RGBA, width, height, 0, RGBA, UNSIGNED_BYTE, null);
+    gl.texParameteri(TEXTURE_2D, TEXTURE_MAG_FILTER, LINEAR);
+    gl.texParameteri(TEXTURE_2D, TEXTURE_MIN_FILTER, LINEAR_MIPMAP_NEAREST);
+    gl.generateMipmap(TEXTURE_2D);
+
+    _frameRenderBuf = gl.createRenderbuffer();
+    gl.bindRenderbuffer(RENDERBUFFER, _frameRenderBuf);
+    gl.renderbufferStorage(RENDERBUFFER, DEPTH_COMPONENT16, width, height);
+
+    gl.framebufferTexture2D(FRAMEBUFFER, COLOR_ATTACHMENT0, TEXTURE_2D, _frameTex, 0);
+    gl.framebufferRenderbuffer(FRAMEBUFFER, DEPTH_ATTACHMENT, RENDERBUFFER, _frameRenderBuf);
+
+    gl.bindTexture(TEXTURE_2D, null);
+    gl.bindRenderbuffer(RENDERBUFFER, null);
+    gl.bindFramebuffer(FRAMEBUFFER, null);
+  }
+
+  disableFrameBuffer() {
+    if (_frameRenderBuf != null) {
+      gl.deleteRenderbuffer(_frameRenderBuf);
+      _frameRenderBuf = null;
+    }
+    if (_frameTex != null) {
+      gl.deleteTexture(_frameTex);
+      _frameTex = null;
+    }
+    if (_frameBuf == null) {
+      gl.deleteFramebuffer(_frameBuf);
+      _frameBuf = null;
+    }
+  }
   //TODO should be to most optimized call
   run() {
     _teardowns.forEach((f) => f(gl));
@@ -170,6 +236,10 @@ class ProgramsRunner {
 
     _setups.forEach((f) => f(gl));
     _setups.clear();
+
+    if (_frameBuf != null) {
+      gl.bindFramebuffer(FRAMEBUFFER, _frameBuf);
+    }
 
     _beforeAlls.forEach((f) => f(gl));
 
@@ -186,6 +256,10 @@ class ProgramsRunner {
     });
 
     _afterAlls.forEach((f) => f(gl));
+    if (_frameBuf != null) {
+      gl.bindFramebuffer(FRAMEBUFFER, null);
+    }
+
   }
 }
 
@@ -198,11 +272,26 @@ class RequestRunOn {
   RunOnRenderingContext setup = null;
   RunOnRenderingContext beforeAll = null;
   RunOnProgramContext before = null;
+  Map<String, RunOnProgramContext> autoData = null;
   RunOnProgramContext at = null;
   RunOnRenderingContext teardown = null;
   RunOnRenderingContext afterAll = null;
   RunOnProgramContextRegistration onAddProgramCtx = null;
   RunOnProgramContextRegistration onRemoveProgramCtx = null;
+
+  RequestRunOn();
+  RequestRunOn.copy(RequestRunOn src) {
+    ctx = src.ctx;
+    setup = src.setup;
+    beforeAll = src.beforeAll;
+    before = src.before;
+    autoData = src.autoData;
+    at = src.at;
+    teardown = src.teardown;
+    afterAll = src.afterAll;
+    onAddProgramCtx = src.onAddProgramCtx;
+    onRemoveProgramCtx = src.onRemoveProgramCtx;
+  }
 }
 
 _compileShader(RenderingContext gl, String src, int type) {
