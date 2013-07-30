@@ -14,6 +14,7 @@ class CameraInfo {
 
   final _projectionMatrix = new Matrix4.zero();
   final _viewMatrix = new Matrix4.identity();
+  final _rotMatrix = new Matrix3.identity();
   final _projectionViewMatrix = new Matrix4.zero();
 
   updateProjectionMatrix() {
@@ -23,6 +24,16 @@ class CameraInfo {
 
   updateViewMatrix() {
     setViewMatrix(_viewMatrix, position, focusPosition, upDirection);
+    //_viewMatrix.getRotation()
+    _rotMatrix.storage[0] = _viewMatrix.storage[0];
+    _rotMatrix.storage[1] = _viewMatrix.storage[1];
+    _rotMatrix.storage[2] = _viewMatrix.storage[2];
+    _rotMatrix.storage[3] = _viewMatrix.storage[4];
+    _rotMatrix.storage[4] = _viewMatrix.storage[5];
+    _rotMatrix.storage[5] = _viewMatrix.storage[6];
+    _rotMatrix.storage[6] = _viewMatrix.storage[8];
+    _rotMatrix.storage[7] = _viewMatrix.storage[9];
+    _rotMatrix.storage[8] = _viewMatrix.storage[10];
     updateProjectionViewMatrix();
   }
 
@@ -34,10 +45,15 @@ class CameraInfo {
 }
 
 class Viewport {
-  int x;
-  int y;
+  int x = 0;
+  int y = 0;
   int viewWidth;
   int viewHeight;
+
+  var sfname_projectionmatrix = SFNAME_PROJECTIONMATRIX;
+  var sfname_viewmatrix = SFNAME_VIEWMATRIX;
+  var sfname_rotmatrix = SFNAME_ROTATIONMATRIX;
+  var sfname_projectionviewmatrix = SFNAME_PROJECTIONVIEWMATRIX;
 
   final camera = new CameraInfo();
 
@@ -58,6 +74,13 @@ class Viewport {
     return b;
   }
 
+  get autoData => new Map()
+    ..[sfname_projectionmatrix] = _setUniformProjectionMatrix
+    ..[sfname_viewmatrix] = _setUniformViewMatrix
+    ..[sfname_rotmatrix] = _setUniformRotMatrix
+    ..[sfname_projectionviewmatrix] = _setUniformProjectionViewMatrix
+    ;
+
   _setup(RenderingContext gl) {
     // Basic viewport setup and clearing of the screen
     gl.viewport(x, y, viewWidth, viewHeight);
@@ -65,43 +88,26 @@ class Viewport {
     camera.updateViewMatrix();
   }
 
-  _autoRegisterOnProgram(ProgramsRunner pr, ProgramContext p) {
-    if (p.getUniformLocation(SFNAME_PROJECTIONMATRIX) != null) {
-      pr.register(new RequestRunOn()
-        ..ctx = p
-        ..before = _setUniformProjectionMatrix
-      );
-    }
-    if (p.getUniformLocation(SFNAME_VIEWMATRIX) != null) {
-      pr.register(new RequestRunOn()
-        ..ctx = p
-        ..before = _setUniformViewMatrix
-      );
-    }
-    if (p.getUniformLocation(SFNAME_PROJECTIONVIEWMATRIX) != null) {
-      pr.register(new RequestRunOn()
-        ..ctx = p
-        ..before = _setUniformProjectionViewMatrix
-      );
-    }
-  }
-
   _setUniformProjectionMatrix(ProgramContext ctx) {
-    injectMatrix4(ctx, camera._projectionMatrix, SFNAME_PROJECTIONMATRIX);
+    injectMatrix4(ctx, camera._projectionMatrix, sfname_projectionmatrix);
   }
 
   _setUniformViewMatrix(ProgramContext ctx) {
-    injectMatrix4(ctx, camera._viewMatrix, SFNAME_VIEWMATRIX);
+    injectMatrix4(ctx, camera._viewMatrix, sfname_viewmatrix);
+  }
+
+  _setUniformRotMatrix(ProgramContext ctx) {
+    injectMatrix3(ctx, camera._rotMatrix, sfname_rotmatrix);
   }
 
   _setUniformProjectionViewMatrix(ProgramContext ctx) {
-    injectMatrix4(ctx, camera._projectionViewMatrix, SFNAME_PROJECTIONVIEWMATRIX);
+    injectMatrix4(ctx, camera._projectionViewMatrix, sfname_projectionviewmatrix);
   }
 
   makeRequestRunOn() => new RequestRunOn()
     ..setup = _setup
 //    ..beforeAll = ((gl) => autoScale(gl.canvas))
-    ..onAddProgramCtx = _autoRegisterOnProgram
+    ..autoData = autoData
   ;
 
 
@@ -116,6 +122,54 @@ class Viewport {
     canvas.height = viewHeight;
     camera.aspectRatio = viewWidth.toDouble() / viewHeight.toDouble();
     camera.updateProjectionMatrix();
+  }
+
+  registerOnResizeCanvas(CanvasElement canvas) {
+    var onResize = (evt){
+      fullCanvas(canvas);
+    };
+    return Window.resizeEvent.forTarget(canvas).listen(onResize);
+  }
+}
+
+class ViewportPlan {
+  int x = 0;
+  int y = 0;
+  int viewWidth;
+  int viewHeight;
+
+
+  // default constructor;
+  ViewportPlan();
+
+  factory ViewportPlan.defaultSettings(CanvasElement canvas) {
+    var b = new Viewport()
+    ..fullCanvas(canvas)
+    ..registerOnResizeCanvas(canvas)
+    ;
+    return b;
+  }
+
+  _setup(RenderingContext gl) {
+    // Basic viewport setup and clearing of the screen
+    gl.viewport(x, y, viewWidth, viewHeight);
+  }
+
+  makeRequestRunOn() => new RequestRunOn()
+    ..setup = _setup
+//    ..beforeAll = ((gl) => autoScale(gl.canvas))
+  ;
+
+
+  fullCanvas(CanvasElement canvas) {
+    var dpr = window.devicePixelRatio;     // retina
+    //var dpr = 1;
+    viewWidth = (dpr * canvas.clientWidth).round();//parseInt(canvas.style.width);
+    viewHeight = (dpr * canvas.clientHeight).round(); //parseInt(canvas.style.height);
+    x = 0;
+    y = 0;
+    canvas.width = viewWidth;
+    canvas.height = viewHeight;
   }
 
   registerOnResizeCanvas(CanvasElement canvas) {
