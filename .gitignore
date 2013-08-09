@@ -2,6 +2,7 @@ pubspec.lock
 
 *.dart.js*
 *.coffee
+*.out
 package
 packages
 off
