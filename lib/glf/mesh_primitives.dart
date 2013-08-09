@@ -35,7 +35,7 @@ makeMeshDef_plane({double dx : 0.5, double dy : 0.5}) {
 
 }
 
-makeMeshDef_cube8Vertices({double dx : 0.5, double dy : 0.5, double dz : 0.5}) {
+makeMeshDef_box8Vertices({double dx : 0.5, double dy : 0.5, double dz : 0.5}) {
 return new MeshDef()
   ..vertices = new Float32List.fromList([
     //Front
@@ -102,7 +102,7 @@ return new MeshDef()
   ;
 }
 
-makeMeshDef_cube24Vertices({double dx : 0.5, double dy : 0.5, double dz : 0.5, double tx : 1.0, double ty : 1.0, double tz : 1.0}) {
+makeMeshDef_box24Vertices({double dx : 0.5, double dy : 0.5, double dz : 0.5, double tx : 1.0, double ty : 1.0, double tz : 1.0}) {
   return new MeshDef()
     ..vertices = new Float32List.fromList([
       // Front face
