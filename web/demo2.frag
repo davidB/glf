@@ -1,8 +1,9 @@
-#ifdef GL_ES
 precision mediump float;
-#endif
-//#define SHADOW_VSM 1
 
+//#define SHADOW_VSM 1
+//#define DISSOLVE
+//#define RIMLIGHT
+  
 const float PI = 3.14159265358979323846264;
 
 varying vec3 vNormal;
@@ -109,7 +110,7 @@ float shadowOf(vec3 lPosition) {
   //shadow = VsmFixLightBleed(shadow, 0.1);
 #else
   // hard shadow
-  float bias = 0.001;
+  float bias = 0.01;
   return step(depth, unpack(texel) + bias);
 #endif
 }
@@ -152,17 +153,19 @@ vec3 rimLight(vec3 viewPos, vec3 normal, vec3 position) {
 uniform float time;
 
 varying vec2 vTexCoord0;
-uniform sampler2D dissolveMap;
+uniform sampler2D _DissolveMap0;
+uniform sampler2D _DissolveMap1;
+uniform sampler2D _DissolveMap2;
 
-float dissolve(float threshold) {
-  float v = texture2D(dissolveMap, vTexCoord0).r;
+float dissolve(float threshold, vec2 uv, sampler2D dissolveMap) {
+  float v = texture2D(dissolveMap, uv).r;
   if (v < threshold) discard;
   return v;
 }
 
 void main(){
   vec3 normal = normalize(vNormal);
-
+  
   vec3 camPos = (_ViewMatrix * vVertex).xyz;
   vec3 lPosition = (lightView * vVertex).xyz;
   vec3 lightPosNormal = normalize(lPosition);
@@ -178,7 +181,7 @@ void main(){
   float r = 0.0;
 #ifdef DISSOLVE
   r = mod(time,1000.0)/1000.0;
-  float v = dissolve(r);
+  float v = dissolve(r, vTexCoord0, _DissolveMap0);
   r = ((v - r) < 0.05)? r : 0.0;
 #endif  
   vec3 excident = (

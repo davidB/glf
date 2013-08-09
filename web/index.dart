@@ -405,7 +405,9 @@ class Obj3D {
     // keep ref to RequestRunOn to be able to register/unregister (show/hide)
     var tex = glf.createTexture(ctx.gl, new Uint8List.fromList([120, 120, 120, 255]), Uri.parse("_images/dirt.jpg"));
     var texNormal = glf.createTexture(ctx.gl, new Uint8List.fromList([0, 0, 120]), Uri.parse("_images/shaders_offest_normalmap.jpg"));
-    var texDissolve = glf.createTexture(ctx.gl, new Uint8List.fromList([120, 120, 120, 255]), Uri.parse("_images/burnMap.png"));
+    var texDissolve0 = glf.createTexture(ctx.gl, new Uint8List.fromList([120, 120, 120, 255]), Uri.parse("_images/burnMap.png"));
+    var texDissolve1 = glf.createTexture(ctx.gl, new Uint8List.fromList([120, 120, 120, 255]), Uri.parse("_images/growMap.gif"));
+    var texDissolve2 = glf.createTexture(ctx.gl, new Uint8List.fromList([120, 120, 120, 255]), Uri.parse("_images/linear.png"));
     var texMatCap = glf.createTexture(ctx.gl, new Uint8List.fromList([120, 120, 120, 255]), Uri.parse("_images/matcap0.png"));
 
     cameraReq = new glf.RequestRunOn()
@@ -416,9 +418,11 @@ class Obj3D {
         glf.injectMatrix4(ctx, transforms, glf.SFNAME_MODELMATRIX);
         glf.injectMatrix3(ctx, normalMatrix, glf.SFNAME_NORMALMATRIX);
         glf.injectTexture(ctx, tex, 0);
-        glf.injectTexture(ctx, texNormal, 1);
-        glf.injectTexture(ctx, texDissolve, 2, 'dissolveMap');
-        glf.injectTexture(ctx, texMatCap, 3);
+        glf.injectTexture(ctx, texNormal, 1, '_NormalMap0');
+        glf.injectTexture(ctx, texMatCap, 2, '_MatCap0');
+        glf.injectTexture(ctx, texDissolve0, 3, '_DissolveMap0');
+        glf.injectTexture(ctx, texDissolve1, 4, '_DissolveMap1');
+        glf.injectTexture(ctx, texDissolve2, 5, '_DissolveMap2');
         // vertices of the mesh can be modified in update loop, so update the data to GPU
         //mesh.vertices.setData(ctx.gl, md.vertices);
         mesh.injectAndDraw(ctx);
