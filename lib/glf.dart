@@ -119,6 +119,7 @@ class ProgramsRunner {
   final _onAddProgramCtxs = new List<RunOnProgramContextRegistration>();
   final _onRemoveProgramCtxs = new List<RunOnProgramContextRegistration>();
   final _autoData = new Map<String, RunOnProgramContext>();
+  FBO fbo;
 
   ProgramsRunner(this.gl);
 
@@ -181,54 +182,6 @@ class ProgramsRunner {
     }
   }
 
-  get frameBuffer => _frameBuf;
-  get frameTexture => _frameTex;
-
-  Framebuffer _frameBuf;
-  Renderbuffer _frameRenderBuf;
-  Texture _frameTex;
-
-  enableFrameBuffer([int width = -1, int height = -1]) {
-    disableFrameBuffer();
-    if (width < 0) width = gl.canvas.width;
-    if (height < 0) height = gl.canvas.height;
-
-    _frameBuf = gl.createFramebuffer();
-    gl.bindFramebuffer(FRAMEBUFFER, _frameBuf);
-
-    _frameTex = gl.createTexture();
-    gl.bindTexture(TEXTURE_2D, _frameTex);
-    gl.texImage2DTyped(TEXTURE_2D, 0, RGBA, width, height, 0, RGBA, UNSIGNED_BYTE, null);
-    gl.texParameteri(TEXTURE_2D, TEXTURE_MAG_FILTER, LINEAR);
-    gl.texParameteri(TEXTURE_2D, TEXTURE_MIN_FILTER, LINEAR_MIPMAP_NEAREST);
-    gl.generateMipmap(TEXTURE_2D);
-
-    _frameRenderBuf = gl.createRenderbuffer();
-    gl.bindRenderbuffer(RENDERBUFFER, _frameRenderBuf);
-    gl.renderbufferStorage(RENDERBUFFER, DEPTH_COMPONENT16, width, height);
-
-    gl.framebufferTexture2D(FRAMEBUFFER, COLOR_ATTACHMENT0, TEXTURE_2D, _frameTex, 0);
-    gl.framebufferRenderbuffer(FRAMEBUFFER, DEPTH_ATTACHMENT, RENDERBUFFER, _frameRenderBuf);
-
-    gl.bindTexture(TEXTURE_2D, null);
-    gl.bindRenderbuffer(RENDERBUFFER, null);
-    gl.bindFramebuffer(FRAMEBUFFER, null);
-  }
-
-  disableFrameBuffer() {
-    if (_frameRenderBuf != null) {
-      gl.deleteRenderbuffer(_frameRenderBuf);
-      _frameRenderBuf = null;
-    }
-    if (_frameTex != null) {
-      gl.deleteTexture(_frameTex);
-      _frameTex = null;
-    }
-    if (_frameBuf == null) {
-      gl.deleteFramebuffer(_frameBuf);
-      _frameBuf = null;
-    }
-  }
   //TODO should be to most optimized call
   run() {
     _teardowns.forEach((f) => f(gl));
@@ -237,8 +190,8 @@ class ProgramsRunner {
     _setups.forEach((f) => f(gl));
     _setups.clear();
 
-    if (_frameBuf != null) {
-      gl.bindFramebuffer(FRAMEBUFFER, _frameBuf);
+    if (fbo != null) {
+      gl.bindFramebuffer(FRAMEBUFFER, fbo._buf);
     }
 
     _beforeAlls.forEach((f) => f(gl));
@@ -256,7 +209,7 @@ class ProgramsRunner {
     });
 
     _afterAlls.forEach((f) => f(gl));
-    if (_frameBuf != null) {
+    if (fbo != null) {
       gl.bindFramebuffer(FRAMEBUFFER, null);
     }
 
@@ -294,6 +247,61 @@ class RequestRunOn {
   }
 }
 
+class FBO {
+  final RenderingContext gl;
+
+  get buffer => _buf;
+  get texture => _tex;
+
+  Framebuffer _buf;
+  Renderbuffer _renderBuf;
+  Texture _tex;
+
+  FBO(this.gl, [int width = -1, int height = -1, int type = UNSIGNED_BYTE]) {
+    if (width < 0) width = gl.canvas.width;
+    if (height < 0) height = gl.canvas.height;
+
+    _buf = gl.createFramebuffer();
+    gl.bindFramebuffer(FRAMEBUFFER, _buf);
+
+    _tex = gl.createTexture();
+    gl.bindTexture(TEXTURE_2D, _tex);
+    gl.texImage2DTyped(TEXTURE_2D, 0, RGBA, width, height, 0, RGBA, type, null);
+    gl.texParameteri(TEXTURE_2D, TEXTURE_WRAP_S, CLAMP_TO_EDGE);
+    gl.texParameteri(TEXTURE_2D, TEXTURE_WRAP_T, CLAMP_TO_EDGE);
+    gl.texParameteri(TEXTURE_2D, TEXTURE_MAG_FILTER, NEAREST);
+    gl.texParameteri(TEXTURE_2D, TEXTURE_MIN_FILTER, NEAREST);
+    //gl.texParameteri(TEXTURE_2D, TEXTURE_MAG_FILTER, LINEAR);
+    //gl.texParameteri(TEXTURE_2D, TEXTURE_MIN_FILTER, LINEAR_MIPMAP_NEAREST);
+    //gl.generateMipmap(TEXTURE_2D);
+
+    _renderBuf = gl.createRenderbuffer();
+    gl.bindRenderbuffer(RENDERBUFFER, _renderBuf);
+    gl.renderbufferStorage(RENDERBUFFER, DEPTH_COMPONENT16, width, height);
+
+    gl.framebufferTexture2D(FRAMEBUFFER, COLOR_ATTACHMENT0, TEXTURE_2D, _tex, 0);
+    gl.framebufferRenderbuffer(FRAMEBUFFER, DEPTH_ATTACHMENT, RENDERBUFFER, _renderBuf);
+
+    gl.bindTexture(TEXTURE_2D, null);
+    gl.bindRenderbuffer(RENDERBUFFER, null);
+    gl.bindFramebuffer(FRAMEBUFFER, null);
+  }
+
+  dispose() {
+    if (_renderBuf != null) {
+      gl.deleteRenderbuffer(_renderBuf);
+      _renderBuf = null;
+    }
+    if (_tex != null) {
+      gl.deleteTexture(_tex);
+      _tex = null;
+    }
+    if (_buf == null) {
+      gl.deleteFramebuffer(_buf);
+      _buf = null;
+    }
+  }
+}
 _compileShader(RenderingContext gl, String src, int type) {
   var shader = gl.createShader(type);
   gl.shaderSource(shader, src);
