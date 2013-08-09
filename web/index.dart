@@ -406,9 +406,11 @@ class Obj3D {
     var tex = glf.createTexture(ctx.gl, new Uint8List.fromList([120, 120, 120, 255]), Uri.parse("_images/dirt.jpg"));
     var texNormal = glf.createTexture(ctx.gl, new Uint8List.fromList([0, 0, 120]), Uri.parse("_images/shaders_offest_normalmap.jpg"));
     var texDissolve0 = glf.createTexture(ctx.gl, new Uint8List.fromList([120, 120, 120, 255]), Uri.parse("_images/burnMap.png"));
-    var texDissolve1 = glf.createTexture(ctx.gl, new Uint8List.fromList([120, 120, 120, 255]), Uri.parse("_images/growMap.gif"));
+    var texDissolve1 = glf.createTexture(ctx.gl, new Uint8List.fromList([120, 120, 120, 255]), Uri.parse("_images/growMap.png"));
     var texDissolve2 = glf.createTexture(ctx.gl, new Uint8List.fromList([120, 120, 120, 255]), Uri.parse("_images/linear.png"));
-    var texMatCap = glf.createTexture(ctx.gl, new Uint8List.fromList([120, 120, 120, 255]), Uri.parse("_images/matcap0.png"));
+    var texMatCap0 = glf.createTexture(ctx.gl, new Uint8List.fromList([120, 120, 120, 255]), Uri.parse("_images/matcap/matcap0.png"));
+    var texMatCap1 = glf.createTexture(ctx.gl, new Uint8List.fromList([120, 120, 120, 255]), Uri.parse("_images/matcap/matcap1.png"));
+    var texMatCap2 = glf.createTexture(ctx.gl, new Uint8List.fromList([120, 120, 120, 255]), Uri.parse("_images/matcap/matcap2.jpg"));
 
     cameraReq = new glf.RequestRunOn()
       ..ctx = ctx
@@ -419,10 +421,12 @@ class Obj3D {
         glf.injectMatrix3(ctx, normalMatrix, glf.SFNAME_NORMALMATRIX);
         glf.injectTexture(ctx, tex, 0);
         glf.injectTexture(ctx, texNormal, 1, '_NormalMap0');
-        glf.injectTexture(ctx, texMatCap, 2, '_MatCap0');
         glf.injectTexture(ctx, texDissolve0, 3, '_DissolveMap0');
         glf.injectTexture(ctx, texDissolve1, 4, '_DissolveMap1');
         glf.injectTexture(ctx, texDissolve2, 5, '_DissolveMap2');
+        glf.injectTexture(ctx, texMatCap0, 10, '_MatCap0');
+        glf.injectTexture(ctx, texMatCap1, 11, '_MatCap1');
+        glf.injectTexture(ctx, texMatCap2, 12, '_MatCap2');
         // vertices of the mesh can be modified in update loop, so update the data to GPU
         //mesh.vertices.setData(ctx.gl, md.vertices);
         mesh.injectAndDraw(ctx);
