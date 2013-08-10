@@ -59,13 +59,13 @@ class Renderer {
 
   var _x0, _x1, _x2;
   init() {
+    //_x0 = gl.getExtension("OES_standard_derivatives");
+    //_x1 = gl.getExtension("OES_texture_float");
+    //_x2 = gl.getExtension("GL_EXT_draw_buffers");
+    //print(">>>> extension $_x0 $_x1 $_x2");
     _initCamera();
     _initLight();
     _initPost();
-    //_x0 = gl.getExtension("OES_standard_derivatives");
-    _x1 = gl.getExtension("OES_texture_float");
-    //_x2 = gl.getExtension("GL_EXT_draw_buffers");
-    //print(">>>> extension $_x0 $_x1 $_x2");
   }
 
   _initCamera() {
@@ -126,7 +126,7 @@ class Renderer {
     _light.camera.near = math.max(0.1, v2.x);//math.max(0.5, (_light.camera.focusPosition - _light.camera.position).length - 3.0);
     //_light.camera.updateProjectionViewMatrix();
 
-    lightRunner.fbo = new glf.FBO(gl, _light.viewWidth, _light.viewHeight/*, GL.FLOAT*/);
+    lightRunner.fbo = new glf.FBO(gl)..make(width : _light.viewWidth, height : _light.viewHeight);
     lightCtx = new glf.ProgramContext(gl, depthVert0, depthFrag0);
     //lightCtx = new glf.ProgramContext(gl, depthVert0, normalFrag0);
     lightRunner.register(_light.makeRequestRunOn()
@@ -415,10 +415,8 @@ class Obj3D {
     cameraReq = new glf.RequestRunOn()
       ..ctx = ctx
       ..at = (ctx) {
+        // material (fake variation)
         ctx.gl.uniform3f(ctx.getUniformLocation(glf.SFNAME_COLORS), 0.5, 0.5, 0.5);
-        glf.makeNormalMatrix(transforms, normalMatrix);
-        glf.injectMatrix4(ctx, transforms, glf.SFNAME_MODELMATRIX);
-        glf.injectMatrix3(ctx, normalMatrix, glf.SFNAME_NORMALMATRIX);
         glf.injectTexture(ctx, tex, 0);
         glf.injectTexture(ctx, texNormal, 1, '_NormalMap0');
         glf.injectTexture(ctx, texDissolve0, 3, '_DissolveMap0');
@@ -427,8 +425,11 @@ class Obj3D {
         glf.injectTexture(ctx, texMatCap0, 10, '_MatCap0');
         glf.injectTexture(ctx, texMatCap1, 11, '_MatCap1');
         glf.injectTexture(ctx, texMatCap2, 12, '_MatCap2');
+        // geometry
         // vertices of the mesh can be modified in update loop, so update the data to GPU
         //mesh.vertices.setData(ctx.gl, md.vertices);
+        glf.injectMatrix4(ctx, transforms, glf.SFNAME_MODELMATRIX);
+        glf.injectMatrix3(ctx, normalMatrix, glf.SFNAME_NORMALMATRIX);
         mesh.injectAndDraw(ctx);
       }
     ;
@@ -437,7 +438,6 @@ class Obj3D {
     lightReq = new glf.RequestRunOn()
       ..ctx = renderer.lightCtx
       ..at = (ctx) {
-        glf.makeNormalMatrix(transforms, normalMatrix);
         glf.injectMatrix4(ctx, transforms, glf.SFNAME_MODELMATRIX);
         glf.injectMatrix3(ctx, normalMatrix, glf.SFNAME_NORMALMATRIX);
         mesh.injectAndDraw(ctx);
@@ -448,6 +448,7 @@ class Obj3D {
     upd0 = (tick){
       transforms.setIdentity();
       transforms.rotateY((tick.time % 5000.0) / 5000.0 * 2 * math.PI);
+      glf.makeNormalMatrix(transforms, normalMatrix);
     };
     onUpdate.add(upd0);
 
