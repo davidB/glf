@@ -257,7 +257,10 @@ class FBO {
   Renderbuffer _renderBuf;
   Texture _tex;
 
-  FBO(this.gl, [int width = -1, int height = -1, int type = UNSIGNED_BYTE]) {
+  FBO(this.gl);
+
+  make({int width : -1, int height : -1, int type : UNSIGNED_BYTE, hasDepthBuff: true}) {
+    dispose();
     if (width < 0) width = gl.canvas.width;
     if (height < 0) height = gl.canvas.height;
 
@@ -274,13 +277,14 @@ class FBO {
     //gl.texParameteri(TEXTURE_2D, TEXTURE_MAG_FILTER, LINEAR);
     //gl.texParameteri(TEXTURE_2D, TEXTURE_MIN_FILTER, LINEAR_MIPMAP_NEAREST);
     //gl.generateMipmap(TEXTURE_2D);
-
-    _renderBuf = gl.createRenderbuffer();
-    gl.bindRenderbuffer(RENDERBUFFER, _renderBuf);
-    gl.renderbufferStorage(RENDERBUFFER, DEPTH_COMPONENT16, width, height);
-
     gl.framebufferTexture2D(FRAMEBUFFER, COLOR_ATTACHMENT0, TEXTURE_2D, _tex, 0);
-    gl.framebufferRenderbuffer(FRAMEBUFFER, DEPTH_ATTACHMENT, RENDERBUFFER, _renderBuf);
+
+    if (hasDepthBuff) {
+      _renderBuf = gl.createRenderbuffer();
+      gl.bindRenderbuffer(RENDERBUFFER, _renderBuf);
+      gl.renderbufferStorage(RENDERBUFFER, DEPTH_COMPONENT16, width, height);
+      gl.framebufferRenderbuffer(FRAMEBUFFER, DEPTH_ATTACHMENT, RENDERBUFFER, _renderBuf);
+    }
 
     gl.bindTexture(TEXTURE_2D, null);
     gl.bindRenderbuffer(RENDERBUFFER, null);
