@@ -82,7 +82,7 @@ class ProgramContextImporter extends AssetImporter {
       asset.imported = b;
       return new Future.value(b);
     }
-    return new Future.value(asset);
+    return new Future.value(null);
   }
 
   void delete(ProgramContext imported) {
@@ -100,16 +100,22 @@ class Tex2DImporter extends AssetImporter {
 
   void initialize(Asset asset) {
     var tex = gl.createTexture();
-    storeColorToTexture(gl, tex, new Uint8List.fromList([187, 187, 187, 255]));
+    //storeColorToTexture seems to break the flow under dart2js
+    //tex = storeColorToTexture(gl, tex, new Uint8List.fromList([187, 187, 187, 255]));
     asset.imported = tex;
   }
 
   Future<dynamic> import(dynamic payload, Asset asset, AssetPackTrace tracer) {
+    print("imported import ${asset.imported}");
     if (payload is ImageElement) {
+      // workaround because initialize doesn't seems to be call via dart2js
+      if (asset.imported == null) {
+        asset.imported = gl.createTexture();
+      }
       importImgToTexture(gl, asset.imported, payload);
       return new Future.value(asset.imported);
     }
-    return new Future.value(asset);
+    return new Future.value(asset.imported);
   }
 
   void delete(wgl.Texture imported) {
@@ -134,7 +140,7 @@ class Filter2DImporter extends AssetImporter {
       asset.imported = b;
       return new Future.value(b);
     }
-    return new Future.value(asset);
+    return new Future.value(null);
   }
 
   void delete(Filter2D imported) {

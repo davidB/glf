@@ -15,8 +15,13 @@ part of glf;
 ///
 Texture createTexture(RenderingContext gl, Uint8List color, [Uri imageUrl, handle(RenderingContext, Texture, ImageElement) = storeImageToTexture]) {
   var tex = gl.createTexture();
-  storeColorToTexture(gl, tex, color);
-  if (imageUrl != null) loadImage(imageUrl).then((img) => handle(gl, tex, img));
+  //storeColorToTexture seems to break the flow under dart2js but doest throw exception
+  //tex = storeColorToTexture(gl, tex, color);
+  if (imageUrl != null) {
+    loadImage(imageUrl).then((img){
+      handle(gl, tex, img);
+    });
+  }
   return tex;
 }
 
@@ -46,10 +51,13 @@ storeColorToTexture(RenderingContext gl, Texture tex, Uint8List color) {
   gl.texParameteri(TEXTURE_2D, TEXTURE_MIN_FILTER, NEAREST);
   //Unbind the texture and return it.
   gl.bindTexture(TEXTURE_2D, null);
+  //TODO check for error
+  //print("storeColorToTexture ${tex != null} 3");
   return tex;
 }
 
 storeImageToTexture(RenderingContext gl, Texture tex, ImageElement ele) {
+  print("store image ${ele} ${tex}");
   gl.bindTexture(TEXTURE_2D, tex);
 
   //Flip Positive Y (Optional)

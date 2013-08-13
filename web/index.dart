@@ -1,10 +1,11 @@
 //TODO :
-// * cleanup code of the demo (remove comment, move Texture name + num as constants)
+// * cleanup code of the demo (remove comment, move Texture name + num as constants, move code of frag/vert into external files)
 // * refactor for a better SoC
 // * expose some SSAO confugiration
 // * expose list of filters2d (include SSAO) to allow enable/disable
 // * add comments into the code (why ...)
-
+// * fix bug via dart2js, any image texture are loaded
+// * add aother mesh primitives (torus, cone, ...) see nutty primites
 import 'dart:html';
 import 'dart:async';
 import 'dart:math' as math;
