@@ -1,3 +1,10 @@
+//TODO :
+// * cleanup code of the demo (remove comment, move Texture name + num as constants)
+// * refactor for a better SoC
+// * expose some SSAO confugiration
+// * expose list of filters2d (include SSAO) to allow enable/disable
+// * add comments into the code (why ...)
+
 import 'dart:html';
 import 'dart:async';
 import 'dart:math' as math;
