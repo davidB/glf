@@ -13,13 +13,15 @@ import 'glf.dart';
 /// will be able to load :
 /// * type 'shaderProgram' => ProgramContext
 /// * type 'tex2d' => Texture
-// TODO meshes.
+/// * type 'filter2d' => Filter2D
+// TODO meshes, glTF
 void registerGlfWithAssetManager(wgl.RenderingContext gl, AssetManager assetManager, {importImgToTexture(RenderingContext, Texture, ImageElement) : storeImageToTexture}) {
   //assetManager.loaders['mesh'] = new TextLoader();
   assetManager.loaders['tex2d'] = new ImageLoader();
   //assetManager.loaders['texCube'] = new _ImagePackLoader();
   //assetManager.loaders['vertexShader'] = new TextLoader();
   //assetManager.loaders['fragmentShader'] = new TextLoader();
+  assetManager.loaders['filter2d'] = new TextLoader();
   assetManager.loaders['shaderProgram'] = new ProgramContextLoader();
 
   //assetManager.importers['mesh'] = new MeshImporter(graphicsDevice);
@@ -27,14 +29,30 @@ void registerGlfWithAssetManager(wgl.RenderingContext gl, AssetManager assetMana
   //assetManager.importers['texCube'] = new TexCubeImporter(graphicsDevice);
   //assetManager.importers['vertexShader'] = new TextImporter();
   //assetManager.importers['fragmentShader'] = new TextImporter();
+  assetManager.importers['filter2d'] = new Filter2DImporter(gl);
   assetManager.importers['shaderProgram'] = new ProgramContextImporter(gl);
 }
 
+final PatternVertAndFrag = new RegExp("""\{([A-Za-z_.0-9]*),([A-Za-z_.0-9]*)\}""");
+
+List<String> extractVertAndFragUrl(String url) {
+  String vertSuffix = '.vert';
+  String fragSuffix = '.frag';
+  var m = PatternVertAndFrag.firstMatch(url);
+  if (m != null) {
+   String from = m.group(0);
+   String vertSuffix = m.group(1);
+   String fragSuffix = m.group(2);
+   return [url.replaceFirst(from, vertSuffix), url.replaceFirst(from, fragSuffix)];
+  }
+  return [url + vertSuffix, url + fragSuffix];
+}
 class ProgramContextLoader extends AssetLoader {
   Future<dynamic> load(Asset asset, AssetPackTrace tracer) {
     TextLoader loader = new TextLoader();
-    var vert = new Asset(asset.pack, asset.name, asset.url + '.vert', 'vertexShader', loader, null, null, null);
-    var frag = new Asset(asset.pack, asset.name, asset.url + '.frag', 'fragmentShader', loader, null, null, null);
+    var urls = extractVertAndFragUrl(asset.url);
+    var vert = new Asset(asset.pack, asset.name, urls[0], 'vertexShader', loader, null, null, null);
+    var frag = new Asset(asset.pack, asset.name, urls[1], 'fragmentShader', loader, null, null, null);
     return Future.wait([
       loader.load(vert, tracer),
       loader.load(frag, tracer)
@@ -71,8 +89,7 @@ class ProgramContextImporter extends AssetImporter {
     if (imported == null) {
       return;
     }
-    print('Deleting shader program ${imported}');
-    gl.deleteProgram(imported.program);
+    imported.delete();
   }
 }
 
@@ -99,8 +116,31 @@ class Tex2DImporter extends AssetImporter {
     if (imported == null) {
       return;
     }
-    print('Deleting texture ${imported}');
     gl.deleteTexture(imported);
   }
 }
 
+class Filter2DImporter extends AssetImporter {
+  final wgl.RenderingContext gl;
+  Filter2DImporter(this.gl);
+
+  void initialize(Asset asset) {
+    asset.imported = null;
+  }
+
+  Future<dynamic> import(dynamic payload, Asset asset, AssetPackTrace tracer) {
+    if (payload is String) {
+      var b = new Filter2D(gl, payload);
+      asset.imported = b;
+      return new Future.value(b);
+    }
+    return new Future.value(asset);
+  }
+
+  void delete(Filter2D imported) {
+    if (imported == null) {
+      return;
+    }
+    imported.ctx.delete();
+  }
+}
