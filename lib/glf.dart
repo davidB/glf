@@ -20,6 +20,7 @@ part 'glf/mesh.dart';
 part 'glf/mesh_primitives.dart';
 part 'glf/textures.dart';
 part 'glf/viewport.dart';
+part 'glf/filters_2d.dart';
 
 // follow OpenGL ES name but replace "gl_" prefix by "_" (see [GLSL QuickRef](http://mew.cx/glsl_quickref.pdf) )
 const SFNAME_VERTICES = "_Vertex";
@@ -32,6 +33,7 @@ const SFNAME_VIEWMATRIX = "_ViewMatrix";
 const SFNAME_ROTATIONMATRIX = "_RotMatrix";
 const SFNAME_PROJECTIONMATRIX = "_ProjectionMatrix";
 const SFNAME_PROJECTIONVIEWMATRIX = "_ProjectionViewMatrix";
+const SFNAME_PIXELSIZE = "_PixelSize";
 
 
 /// Create a WebGL [Program], compiling [Shader]s from passed in sources and
@@ -75,6 +77,14 @@ class ProgramContext {
     return b;
   }
 
+  disableAllAttrib([ProgramContext exceptFrom]) {
+    var except = (exceptFrom == null)? []:exceptFrom._attributes.keys;
+    _attributes.forEach((k,v){
+      if (v != -1 && !except.contains(k)) {
+        gl.disableVertexAttribArray(v);
+      }
+    });
+  }
   delete() {
     if (_fragShader != null) {
       gl.detachShader(program, _fragShader);
@@ -114,12 +124,13 @@ class ProgramsRunner {
   final _ctxs = new List<ProgramContext>();
   final _setups = new List<RunOnRenderingContext>();
   final _beforeAlls = new List<RunOnRenderingContext>();
+  final _beforeEachs = new List<RunOnProgramContext>();
   final _afterAlls =  new List<RunOnRenderingContext>();
   final _teardowns = new List<RunOnRenderingContext>();
   final _onAddProgramCtxs = new List<RunOnProgramContextRegistration>();
   final _onRemoveProgramCtxs = new List<RunOnProgramContextRegistration>();
   final _autoData = new Map<String, RunOnProgramContext>();
-  FBO fbo;
+  final _atEachs = new List<RunOnProgramContext>();
 
   ProgramsRunner(this.gl);
 
@@ -129,11 +140,13 @@ class ProgramsRunner {
     if (req.setup != null) _setups.add(req.setup);
 
     if (req.beforeAll != null) _beforeAlls.add(req.beforeAll);
+    if (req.afterAll != null) _afterAlls.add(req.afterAll);
     if (req.onAddProgramCtx != null) _onAddProgramCtxs.add(req.onAddProgramCtx);
     if (req.onRemoveProgramCtx != null) _onRemoveProgramCtxs.add(req.onRemoveProgramCtx);
+    if (req.beforeEach != null) _beforeEachs.add(req.beforeEach);
+    if (req.atEach != null) _atEachs.add(req.atEach);
     if (req.autoData != null) req.autoData.forEach((k, v){
       _autoData[k] = v;
-      _ctxs.forEach((ctx) => ctx._befores.add(v));
     });
 
     if (req.ctx != null) {
@@ -144,11 +157,6 @@ class ProgramsRunner {
       if (req.before != null) req.ctx._befores.add(req.before);
       if (req.at != null) req.ctx._ats.add(req.at);
       if (isNew) {
-        _autoData.forEach((k,v) {
-          if (req.ctx.getUniformLocation(k) != null) {
-            req.ctx._befores.add(v);
-          }
-        });
         _onAddProgramCtxs.forEach((f)=> f(this, req.ctx));
       }
     } else {
@@ -163,11 +171,13 @@ class ProgramsRunner {
     if (req.teardown != null) _teardowns.add(req.teardown);
 
     if (req.beforeAll != null) _beforeAlls.remove(req.beforeAll);
+    if (req.afterAll != null) _afterAlls.remove(req.afterAll);
     if (req.onAddProgramCtx != null) _onAddProgramCtxs.remove(req.onAddProgramCtx);
     if (req.onRemoveProgramCtx != null) _onAddProgramCtxs.remove(req.onRemoveProgramCtx);
+    if (req.beforeEach != null) _beforeEachs.remove(req.beforeEach);
+    if (req.atEach != null) _atEachs.remove(req.atEach);
     if (req.autoData != null) req.autoData.keys.forEach((k){
       var v = _autoData.remove(k);
-      _ctxs.forEach((ctx) => ctx._befores.remove(v));
     });
 
     if (req.ctx != null) {
@@ -190,29 +200,33 @@ class ProgramsRunner {
     _setups.forEach((f) => f(gl));
     _setups.clear();
 
-    if (fbo != null) {
-      gl.bindFramebuffer(FRAMEBUFFER, fbo._buf);
-    }
-
+    gl.bindFramebuffer(FRAMEBUFFER, null);
     _beforeAlls.forEach((f) => f(gl));
 
     _ctxs.forEach((ctx) {
-      // useProgram is done outof draw to allow factorisation later
-//      ctx.gl.useProgram(ctx.program);
-//      ctx._befores.forEach((f) => f(ctx));
-//      ctx._ats.forEach((f) => f(ctx));
-      ctx._ats.forEach((f){
-        ctx.gl.useProgram(ctx.program);
-        ctx._befores.forEach((f) => f(ctx));
-        f(ctx);
-      });
+      // useProgram is done out of draw to allow factorisation later
+      ctx.gl.useProgram(ctx.program);
+      _autoData.values.forEach((f) => f(ctx));
+      _beforeEachs.forEach((f) => f(ctx));
+      ctx._befores.forEach((f) => f(ctx));
+      _atEachs.forEach((f) => f(ctx));
+      ctx._ats.forEach((f) => f(ctx));
+//      _atEachs.forEach((f){
+//        _beforeEachs.forEach((f) => f(ctx));
+////        ctx.gl.useProgram(ctx.program);
+//        ctx._befores.forEach((f) => f(ctx));
+//        f(ctx);
+//      });
+//      ctx._ats.forEach((f){
+////        ctx.gl.useProgram(ctx.program);
+//        _beforeEachs.forEach((f) => f(ctx));
+//        ctx._befores.forEach((f) => f(ctx));
+//        f(ctx);
+//      });
+      ctx.disableAllAttrib();
     });
 
     _afterAlls.forEach((f) => f(gl));
-    if (fbo != null) {
-      gl.bindFramebuffer(FRAMEBUFFER, null);
-    }
-
   }
 }
 
@@ -224,8 +238,10 @@ class RequestRunOn {
   ProgramContext ctx = null;
   RunOnRenderingContext setup = null;
   RunOnRenderingContext beforeAll = null;
+  RunOnProgramContext beforeEach = null;
   RunOnProgramContext before = null;
   Map<String, RunOnProgramContext> autoData = null;
+  RunOnProgramContext atEach = null;
   RunOnProgramContext at = null;
   RunOnRenderingContext teardown = null;
   RunOnRenderingContext afterAll = null;
@@ -320,6 +336,7 @@ _compileShader(RenderingContext gl, String src, int type) {
   return shader;
 }
 
+
 _linkProgram(RenderingContext gl, Shader vertex, Shader fragment, [deleteShaderOnFailure = true]) {
   var program = gl.createProgram();
   gl.attachShader(program, vertex);
@@ -340,7 +357,6 @@ _linkProgram(RenderingContext gl, Shader vertex, Shader fragment, [deleteShaderO
   return program;
 }
 
-
 void injectMatrix4(ProgramContext ctx, Matrix4 mat, String sname) {
   var u = ctx.getUniformLocation(sname);
   if (u != null) {
@@ -354,6 +370,7 @@ void injectMatrix3(ProgramContext ctx, Matrix3 mat, String sname) {
     ctx.gl.uniformMatrix3fv(u, false, mat.storage);
   }
 }
+
 //makeNormalMatrix(Matrix4 transforms, Matrix4 out){
 //  return out
 //  ..setIdentity()
