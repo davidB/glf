@@ -184,7 +184,7 @@ void main(){
   vec3 excident = (
     skyLight(normal) +
 #ifdef RIMLIGHT    
-    rimLight(camPos, normal, vVertex) +
+    rimLight(camPos, normal, vVertex.xyz) +
 #endif
     clamp(lighting, 0.6, 1.0) * _Color
   );
