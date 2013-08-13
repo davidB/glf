@@ -135,9 +135,6 @@ vec3 skyLight(vec3 normal){
   return vec3(smoothstep(0.0, PI, PI-acos(normal.y)))*0.4;
 }
 
-vec3 gamma(vec3 color){
-  return pow(color, vec3(2.2));
-}
 
 const float rimStart = 0.5;
 const float rimEnd = 1.0;
@@ -192,7 +189,7 @@ void main(){
     clamp(lighting, 0.6, 1.0) * _Color
   );
 
-  gl_FragColor.rgb = gamma(excident);
+  gl_FragColor.rgb = excident;
   gl_FragColor.r += r;
   gl_FragColor.a = 1.0;
 }
