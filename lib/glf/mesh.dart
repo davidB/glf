@@ -96,11 +96,14 @@ class Mesh {
     lines.free(gl);
   }
 
-  injectAndDraw(ProgramContext ctx, [int mode = TRIANGLES]) {
+  inject(ProgramContext ctx) {
     normals.injectVertexAttribArray(ctx);
     texCoords.injectVertexAttribArray(ctx);
     colors.injectVertexAttribArray(ctx);
     vertices.injectVertexAttribArray(ctx);
+  }
+
+  draw(ProgramContext ctx, [int mode = TRIANGLES]) {
     triangles.drawElements(ctx, mode);
     lines.drawElements(ctx, LINES);
   }
