@@ -86,40 +86,25 @@ class ViewportCamera {
     return b;
   }
 
-  get autoData => new Map()
-    ..[sfname_projectionmatrix] = _setUniformProjectionMatrix
-    ..[sfname_viewmatrix] = _setUniformViewMatrix
-    ..[sfname_rotmatrix] = _setUniformRotMatrix
-    ..[sfname_projectionviewmatrix] = _setUniformProjectionViewMatrix
-    ;
-
-  _setup(RenderingContext gl) {
+  setup(RenderingContext gl) {
     // Basic viewport setup and clearing of the screen
     gl.viewport(x, y, viewWidth, viewHeight);
     camera.updateProjectionMatrix();
     camera.updateViewMatrix();
   }
 
-  _setUniformProjectionMatrix(ProgramContext ctx) {
+  injectUniforms(ProgramContext ctx) {
     injectMatrix4(ctx, camera.projectionMatrix, sfname_projectionmatrix);
-  }
-
-  _setUniformViewMatrix(ProgramContext ctx) {
     injectMatrix4(ctx, camera.viewMatrix, sfname_viewmatrix);
-  }
-
-  _setUniformRotMatrix(ProgramContext ctx) {
     injectMatrix3(ctx, camera.rotMatrix, sfname_rotmatrix);
-  }
-
-  _setUniformProjectionViewMatrix(ProgramContext ctx) {
     injectMatrix4(ctx, camera.projectionViewMatrix, sfname_projectionviewmatrix);
+    ctx.gl.uniform1f(ctx.getUniformLocation("_Near"), camera.near);
+    ctx.gl.uniform1f(ctx.getUniformLocation("_Far"), camera.far);
   }
 
   makeRequestRunOn() => new RequestRunOn()
-    ..setup = _setup
-//    ..beforeAll = ((gl) => autoScale(gl.canvas))
-    ..autoData = autoData
+    ..setup = setup
+    ..beforeEach = injectUniforms
   ;
 
 
@@ -156,7 +141,8 @@ class ViewportPlan {
   int y = 0;
   int viewWidth;
   int viewHeight;
-
+  ///DO NOT MODIFIED directly, direct access is provided to avoid copy for read
+  Vector2 pixelSize = new Vector2.zero();
 
   // default constructor;
   ViewportPlan();
@@ -169,16 +155,23 @@ class ViewportPlan {
     return b;
   }
 
-  _setup(RenderingContext gl) {
+  setup(RenderingContext gl) {
     // Basic viewport setup and clearing of the screen
     gl.viewport(x, y, viewWidth, viewHeight);
+    pixelSize.x = 1.0 / viewWidth.toDouble();
+    pixelSize.y = 1.0 / viewHeight.toDouble();
+  }
+
+  injectUniforms(ProgramContext ctx) {
+    ctx.gl.uniform2f(ctx.getUniformLocation(SFNAME_PIXELSIZE), pixelSize.x, pixelSize.y);
+    //print("$pixelSize");
+    //ctx.gl.uniform1fv(ctx.getUniformLocation(SFNAME_PIXELSIZE), pixelSize.storage);
   }
 
   makeRequestRunOn() => new RequestRunOn()
-    ..setup = _setup
-//    ..beforeAll = ((gl) => autoScale(gl.canvas))
+  ..setup = setup
+  ..beforeEach = injectUniforms
   ;
-
 
   fullCanvas(CanvasElement canvas) {
     var dpr = window.devicePixelRatio;     // retina
