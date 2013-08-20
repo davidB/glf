@@ -54,6 +54,39 @@ class CameraInfo {
     projectionViewMatrix.multiply(viewMatrix);
   }
 
+  adjustNearFar(Aabb3 aabb, double nearMin, double farMin) {
+    var axis = (focusPosition - position).normalized();
+    var v2 = new Vector2.zero();
+    extractMinMaxProjection(aabbToPoints(aabb), axis, position,v2);
+    far = math.max(farMin, v2.y);
+    near = math.max(nearMin, v2.x);
+  }
+}
+
+aabbToPoints(Aabb3 aabb) {
+  var b = new List<Vector3>(8);
+  b[0] = new Vector3(aabb.min.x, aabb.min.y, aabb.min.z);
+  b[1] = new Vector3(aabb.min.x, aabb.min.y, aabb.max.z);
+  b[2] = new Vector3(aabb.min.x, aabb.max.y, aabb.min.z);
+  b[3] = new Vector3(aabb.max.x, aabb.min.y, aabb.min.z);
+  b[4] = new Vector3(aabb.max.x, aabb.max.y, aabb.max.z);
+  b[5] = new Vector3(aabb.max.x, aabb.max.y, aabb.min.z);
+  b[6] = new Vector3(aabb.max.x, aabb.min.y, aabb.max.z);
+  b[7] = new Vector3(aabb.min.x, aabb.max.y, aabb.max.z);
+  return b;
+}
+extractMinMaxProjection(List<Vector3> vs, Vector3 axis, Vector3 origin, Vector2 out) {
+  var tmp = new Vector3.zero();
+  tmp.setFrom(vs[0]).sub(origin);
+  var p = tmp.dot(axis);
+  out.x = p;
+  out.y = p;
+  for (int i = 1; i < vs.length; i++) {
+    tmp.setFrom(vs[i]).sub(origin);
+    p = tmp.dot(axis);
+    if (p < out.x) out.x = p;
+    if (p > out.y) out.y = p;
+  }
 }
 
 class ViewportCamera {

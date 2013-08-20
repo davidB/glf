@@ -57,7 +57,6 @@ storeColorToTexture(RenderingContext gl, Texture tex, Uint8List color) {
 }
 
 storeImageToTexture(RenderingContext gl, Texture tex, ImageElement ele) {
-  print("store image ${ele} ${tex}");
   gl.bindTexture(TEXTURE_2D, tex);
 
   //Flip Positive Y (Optional)

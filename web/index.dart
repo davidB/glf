@@ -9,7 +9,7 @@
 import 'dart:html';
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:web_gl' as GL;
+import 'dart:web_gl' as WebGL;
 import 'dart:typed_data';
 import 'package:js/js.dart' as js;
 
@@ -18,6 +18,7 @@ import 'package:vector_math/vector_math.dart';
 import 'package:asset_pack/asset_pack.dart';
 import 'package:glf/glf.dart' as glf;
 import 'package:glf/glf_asset_pack.dart';
+import 'package:glf/glf_renderera.dart';
 
 const TexNormalsRandomL = "_TexNormalsRandom";
 const TexNormalsRandomN = 28;
@@ -37,7 +38,7 @@ main(){
   //var hostUI = new js.Proxy(gli.host.HostUI, result);
   //result.hostUI = hostUI; // just so we can access it later for debugging
   var am = initAssetManager(gl);
-  new Main(new Renderer2(gl), am).start();
+  new Main(new RendererA(gl), am).start();
 }
 
 AssetManager initAssetManager(gl) {
@@ -66,31 +67,7 @@ class EventsPrintControler {
   }
 }
 
-aabbToPoints(Aabb3 aabb) {
-  var b = new List<Vector3>(8);
-  b[0] = new Vector3(aabb.min.x, aabb.min.y, aabb.min.z);
-  b[1] = new Vector3(aabb.min.x, aabb.min.y, aabb.max.z);
-  b[2] = new Vector3(aabb.min.x, aabb.max.y, aabb.min.z);
-  b[3] = new Vector3(aabb.max.x, aabb.min.y, aabb.min.z);
-  b[4] = new Vector3(aabb.max.x, aabb.max.y, aabb.max.z);
-  b[5] = new Vector3(aabb.max.x, aabb.max.y, aabb.min.z);
-  b[6] = new Vector3(aabb.max.x, aabb.min.y, aabb.max.z);
-  b[7] = new Vector3(aabb.min.x, aabb.max.y, aabb.max.z);
-  return b;
-}
-extractMinMaxProjection(List<Vector3> vs, Vector3 axis, Vector3 origin, Vector2 out) {
-  var tmp = new Vector3.zero();
-  tmp.setFrom(vs[0]).sub(origin);
-  var p = tmp.dot(axis);
-  out.x = p;
-  out.y = p;
-  for (int i = 1; i < vs.length; i++) {
-    tmp.setFrom(vs[i]).sub(origin);
-    p = tmp.dot(axis);
-    if (p < out.x) out.x = p;
-    if (p > out.y) out.y = p;
-  }
-}
+
 
 //class Renderer {
 //  final gl;
@@ -254,177 +231,7 @@ extractMinMaxProjection(List<Vector3> vs, Vector3 axis, Vector3 origin, Vector2 
 //  }
 //}
 
-class Renderer2SolidCache {
-  Geometry geometry;
-  Material material;
-  glf.RequestRunOn cameraReq;
-  glf.RequestRunOn geomReq;
 
-  Renderer2SolidCache(this.geometry, this.material) {
-    cameraReq = new glf.RequestRunOn()
-    ..ctx = material.ctx
-    ..at = (ctx) {
-      material.cfg(ctx);
-      geometry.injectAndDraw(ctx);
-    }
-    ;
-    geomReq = new glf.RequestRunOn()
-    ..atEach = geometry.injectAndDraw
-    ;
-  }
-}
-var lightCtx00 = null;
-
-class Renderer2 {
-  final gl;
-
-  final glf.ProgramsRunner _preRunner;
-  final glf.ProgramsRunner _cameraRunner;
-  glf.Filter2DRunner _post2d;
-  glf.Filter2DRunner _post2dw1;
-
-  get filters2d => _post2d.filters;
-
-  get debugView => _post2dw1.texInit;
-  set debugView(GL.Texture tex) => _post2dw1.texInit = tex;
-
-  final cameraViewport;
-
-  var _reqs = new Map<Geometry, Renderer2SolidCache>();
-
-  /// Aabb of the scene used to adjust some parameter (like near, far shadowMapping)
-  /// it is not updated when solid is add (or updated or removed).
-  final sceneAabb = new Aabb3()
-  ..min.setValues(-4.0, -4.0, -1.0)
-  ..max.setValues(4.0, 4.0, 4.0)
-  ;
-
-  Renderer2(gl) : this.gl = gl,
-    _preRunner = new glf.ProgramsRunner(gl),
-    _cameraRunner = new glf.ProgramsRunner(gl),
-    cameraViewport = new glf.ViewportCamera.defaultSettings(gl.canvas)
-  ;
-
-  addPrepare(glf.RequestRunOn req) {
-    _preRunner.register(req);
-  }
-
-  removePrepare(glf.RequestRunOn req) {
-    _preRunner.unregister(req);
-  }
-
-  add(glf.RequestRunOn req) {
-    _cameraRunner.register(req);
-  }
-
-  remove(glf.RequestRunOn req) {
-    _cameraRunner.unregister(req);
-  }
-
-  addSolid(Geometry geometry, Material material) {
-    var e = new Renderer2SolidCache(geometry, material);
-    _reqs[geometry] = e;
-    addPrepare(e.geomReq);
-    add(e.cameraReq);
-  }
-
-  removeSolid(Geometry geometry) {
-    var e = _reqs[geometry];
-    if (e != null) {
-      removePrepare(e.geomReq);
-      remove(e.cameraReq);
-      _reqs[geometry] = null;
-    }
-  }
-
-  var _x0, _x1, _x2;
-  init() {
-    //_x0 = gl.getExtension("OES_standard_derivatives");
-    _x1 = gl.getExtension("OES_texture_float");
-    //_x2 = gl.getExtension("GL_EXT_draw_buffers");
-    _initPostW0();
-    _initPostW1();
-    _initCamera();
-    _initPre();
-  }
-
-  _initCamera() {
-    // Camera default setting for perspective use canvas area full
-    var viewport = cameraViewport;
-    var camera = viewport.camera;
-    camera.position.setValues(0.0, 0.0, 6.0);
-    camera.focusPosition.setValues(0.0, 0.0, 0.0);
-    var axis = (camera.focusPosition - camera.position).normalized();
-    var v2 = new Vector2.zero();
-    extractMinMaxProjection(aabbToPoints(sceneAabb), axis, camera.position,v2);
-    camera.far = math.max(0.1, v2.y);
-    camera.near = math.max(0.1, v2.x);
-    //TODO support resize
-    var cameraFbo = new glf.FBO(gl)..make(width : viewport.viewWidth, height : viewport.viewHeight);
-    var r = new glf.RequestRunOn()
-      ..setup= (gl) {
-        if (true) {
-          // opaque
-          gl.disable(GL.BLEND);
-          gl.depthFunc(GL.LEQUAL);
-          //gl.depthFunc(GL.LESS); // default value
-          gl.enable(GL.DEPTH_TEST);
-//        } else {
-//          // blend
-//          gl.disable(GL.DEPTH_TEST);
-//          gl.blendFunc(GL.SRC_ALPHA, GL.ONE);
-//          gl.enable(GL.BLEND);
-        }
-        gl.colorMask(true, true, true, true);
-        viewport.setup(gl);
-      }
-      ..beforeAll = (gl) {
-        gl.bindFramebuffer(GL.FRAMEBUFFER, cameraFbo.buffer);
-        gl.viewport(viewport.x, viewport.y, viewport.viewWidth, viewport.viewHeight);
-        //gl.clearColor(0.0, 0.0, 0.0, 1.0);
-        gl.clearColor(1.0, 0.0, 0.0, 1.0);
-        //gl.clearColor(1.0, 1.0, 1.0, 1.0);
-        gl.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
-        //gl.clear(GL.COLOR_BUFFER_BIT);
-      }
-      ..beforeEach =  viewport.injectUniforms
-//      ..onRemoveProgramCtx = (prunner, ctx) {
-//        ctx.delete();
-//      }
-    ;
-    add(r);
-    _post2d.texInit = cameraFbo.texture;
-  }
-
-  _initPre() {
-  }
-
-  _initPostW1() {
-    var view2d = new glf.ViewportPlan()
-    ..viewWidth = 256
-    ..viewHeight = 256
-    ..x = 10
-    ..y = 0
-    ;
-    _post2dw1 = new glf.Filter2DRunner(gl, view2d);
-    HttpRequest.request('packages/glf/shaders/filters_2d/identity.frag', method: 'GET').then((r) {
-      _post2dw1.filters.add(new glf.Filter2D(gl, r.responseText));
-    });
-  }
-
-  _initPostW0() {
-    var view2d = new glf.ViewportPlan()..fullCanvas(gl.canvas);
-    _post2d = new glf.Filter2DRunner(gl, view2d);
-  }
-
-  run() {
-    _preRunner.run();
-    _cameraRunner.run();
-    _post2d.run();
-    if (_post2dw1.texInit != null) _post2dw1.run();
-  }
-
-}
 class Tick {
   double _t = -1.0;
   double _tr = 0.0;
@@ -454,7 +261,7 @@ class Tick {
 
 class Main {
 
-  final Renderer2 renderer;
+  final RendererA renderer;
   final AssetManager am;
   final Factory_Filter2D factory_filter2d;
 
@@ -634,23 +441,18 @@ class Main {
       ..camera.aspectRatio = 1.0
       ..camera.position.setValues(2.0, 2.0, 4.0)
       ..camera.focusPosition.setValues(0.0, 0.0, 0.0)
+      ..camera.adjustNearFar(renderer.sceneAabb, 0.1, 0.1);
       ;
-    var axis = light.camera.focusPosition - light.camera.position;
-    var v2 = new Vector2.zero();
-    extractMinMaxProjection(aabbToPoints(renderer.sceneAabb), axis, light.camera.position,v2);
-    light.camera.far = math.max(0.1, v2.y);//(_light.camera.focusPosition - _light.camera.position).length * 2;
-    light.camera.near = math.max(0.1, v2.x);//math.max(0.5, (_light.camera.focusPosition - _light.camera.position).length - 3.0);
-
     var lightFbo = new glf.FBO(renderer.gl)..make(width : light.viewWidth, height : light.viewHeight);
     var lightCtx = am['shader_depth_light'];
     var lightR = light.makeRequestRunOn()
       ..ctx = lightCtx
       ..setup = light.setup
       ..before =(ctx) {
-        ctx.gl.bindFramebuffer(GL.FRAMEBUFFER, lightFbo.buffer);
+        ctx.gl.bindFramebuffer(WebGL.FRAMEBUFFER, lightFbo.buffer);
         ctx.gl.viewport(light.x, light.y, light.viewWidth, light.viewHeight);
         ctx.gl.clearColor(1.0, 1.0, 1.0, 1.0);
-        ctx.gl.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
+        ctx.gl.clear(WebGL.COLOR_BUFFER_BIT | WebGL.DEPTH_BUFFER_BIT);
         light.injectUniforms(ctx);
       }
     ;
@@ -682,14 +484,14 @@ class Main {
   }
 
   _initRendererPreDeferred0(vp, ctx, texName, texNum) {
-    var fbo = new glf.FBO(renderer.gl)..make(width : vp.viewWidth, height : vp.viewHeight, type: GL.FLOAT);
+    var fbo = new glf.FBO(renderer.gl)..make(width : vp.viewWidth, height : vp.viewHeight, type: WebGL.FLOAT);
     var pre = new glf.RequestRunOn()
       ..ctx = ctx
       ..before =(ctx) {
-        ctx.gl.bindFramebuffer(GL.FRAMEBUFFER, fbo.buffer);
+        ctx.gl.bindFramebuffer(WebGL.FRAMEBUFFER, fbo.buffer);
         ctx.gl.viewport(vp.x, vp.y, vp.viewWidth, vp.viewHeight);
         ctx.gl.clearColor(1.0, 1.0, 1.0, 1.0);
-        ctx.gl.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
+        ctx.gl.clear(WebGL.COLOR_BUFFER_BIT | WebGL.DEPTH_BUFFER_BIT);
         vp.injectUniforms(ctx);
       }
     ;
@@ -705,7 +507,7 @@ class Main {
     return fbo;
   }
 
-  _initSSAO(GL.Texture texNormals, GL.Texture texVertices, GL.Texture texNormalsRandom) {
+  _initSSAO(WebGL.Texture texNormals, WebGL.Texture texVertices, WebGL.Texture texNormalsRandom) {
     var ssao = new glf.Filter2D.copy(am['filter2d_blend_ssao'])
     ..cfg = (ctx) {
       ctx.gl.uniform2f(ctx.getUniformLocation('_Attenuation'), 1.0, 5.0); // (0,0) -> (2, 10) def (1.0, 5.0)
@@ -786,40 +588,7 @@ class Factory_Filter2D {
 
 }
 
-class Geometry {
-  final transforms = new Matrix4.identity();
-  final normalMatrix = new Matrix3.zero();
-  final _mesh = new glf.Mesh();
-  var _md = null;
-  var meshNeedUpdate = true;
-  var verticesNeedUpdate = false;
-  get meshDef => _md;
-  set meshDef(glf.MeshDef v) {
-    _md = v;
-    meshNeedUpdate = true;
-  }
 
-  injectAndDraw(glf.ProgramContext ctx) {
-    if (meshNeedUpdate && _md != null) {
-      _mesh.setData(ctx.gl, _md);
-      meshNeedUpdate = false;
-      verticesNeedUpdate = false;
-    }
-    if (verticesNeedUpdate && _md != null) {
-      _mesh.vertices.setData(ctx.gl, _md.vertices);
-      verticesNeedUpdate = false;
-    }
-    glf.injectMatrix4(ctx, transforms, glf.SFNAME_MODELMATRIX);
-    glf.injectMatrix3(ctx, normalMatrix, glf.SFNAME_NORMALMATRIX);
-    _mesh.inject(ctx);
-    _mesh.draw(ctx);
-  }
-}
-
-class Material {
-  glf.ProgramContext ctx = null;
-  glf.RunOnProgramContext cfg = null;
-}
 
 class Obj3D {
   var cameraReqN;
