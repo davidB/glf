@@ -55,9 +55,13 @@ class CameraInfo {
   }
 
   adjustNearFar(Aabb3 aabb, double nearMin, double farMin) {
-    var axis = (focusPosition - position).normalized();
     var v2 = new Vector2.zero();
-    extractMinMaxProjection(aabbToPoints(aabb), axis, position,v2);
+    if (isOrthographic) {
+      var axis = (focusPosition - position).normalized();
+      extractMinMaxProjection(aabbToPoints(aabb), axis, position,v2);
+    } else {
+      extractMinMaxDistance(aabbToPoints(aabb), position,v2);
+    }
     far = math.max(farMin, v2.y);
     near = math.max(nearMin, v2.x);
   }
@@ -88,7 +92,19 @@ extractMinMaxProjection(List<Vector3> vs, Vector3 axis, Vector3 origin, Vector2 
     if (p > out.y) out.y = p;
   }
 }
-
+extractMinMaxDistance(List<Vector3> vs, Vector3 origin, Vector2 out) {
+  var tmp = new Vector3.zero();
+  tmp.setFrom(vs[0]).sub(origin);
+  var p = tmp.length;
+  out.x = p;
+  out.y = p;
+  for (int i = 1; i < vs.length; i++) {
+    tmp.setFrom(vs[i]).sub(origin);
+    p = tmp.length;
+    if (p < out.x) out.x = p;
+    if (p > out.y) out.y = p;
+  }
+}
 class ViewportCamera {
   int x = 0;
   int y = 0;
