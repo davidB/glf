@@ -197,19 +197,23 @@ class Float32Buffer {
   String sname;
   int spacing = 3;
   Buffer buff = null;
+  int length = 0;
 
   setData(RenderingContext gl, Float32List l) {
-    if (buff != null) {
+    if (buff == null) {
+      buff = gl.createBuffer();
+      length = l.length;
+    } else if (length != l.length) {
       gl.deleteBuffer(buff);
+      buff = gl.createBuffer();
+      length = l.length;
     }
-    buff = gl.createBuffer();
     gl.bindBuffer(ARRAY_BUFFER, buff);
     gl.bufferDataTyped(ARRAY_BUFFER, l, STATIC_DRAW);
   }
 
   free(RenderingContext gl) {
-    if (buff == null) buff = gl.createBuffer();
-    gl.deleteBuffer(buff);
+    if (buff != null) gl.deleteBuffer(buff);
     buff = null;
   }
 
@@ -226,18 +230,19 @@ class Float32Buffer {
 
 class Uint16Buffer_Element {
   Buffer buff = null;
-  int length = 0;
+  int length = -1;
 
   setData(RenderingContext gl, Uint16List l) {
     if (buff == null) {
       buff = gl.createBuffer();
+      length = l.length;
     } else if (length != l.length) {
       gl.deleteBuffer(buff);
       buff = gl.createBuffer();
+      length = l.length;
     }
     gl.bindBuffer(ELEMENT_ARRAY_BUFFER, buff);
     gl.bufferDataTyped(ELEMENT_ARRAY_BUFFER, l, STATIC_DRAW);
-    length = l.length;
   }
 
   free(RenderingContext gl) {
