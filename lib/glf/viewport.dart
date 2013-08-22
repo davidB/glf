@@ -55,14 +55,13 @@ class CameraInfo {
   }
 
   adjustNearFar(Aabb3 aabb, double nearMin, double farMin) {
-    var v2 = new Vector2.zero();
-    if (isOrthographic) {
-      var axis = (focusPosition - position).normalized();
-      extractMinMaxProjection(aabbToPoints(aabb), axis, position,v2);
-    } else {
-      extractMinMaxDistance(aabbToPoints(aabb), position,v2);
-    }
-    far = math.max(farMin, v2.y);
+    var v2 = new Vector2(nearMin, farMin);
+    var axis = (focusPosition - position).normalized();
+    var pts = aabbToPoints(aabb);
+    //extractMinMaxProjection(pts, axis, position,v20);
+    //extractMinMaxDistance(pts, position, v21);
+    extractMinMaxDistanceAndProjection(pts, axis, position, v2);
+    far = v2.y;
     near = math.max(nearMin, v2.x);
   }
 }
@@ -79,30 +78,43 @@ aabbToPoints(Aabb3 aabb) {
   b[7] = new Vector3(aabb.min.x, aabb.max.y, aabb.max.z);
   return b;
 }
-extractMinMaxProjection(List<Vector3> vs, Vector3 axis, Vector3 origin, Vector2 out) {
+//extractMinMaxProjection(List<Vector3> vs, Vector3 axis, Vector3 origin, Vector2 out) {
+//  var tmp = new Vector3.zero();
+//  tmp.setFrom(vs[0]).sub(origin);
+//  var p = tmp.dot(axis);
+//  out.x = p;
+//  out.y = p;
+//  for (int i = 1; i < vs.length; i++) {
+//    tmp.setFrom(vs[i]).sub(origin);
+//    p = tmp.dot(axis);
+//    if (p < out.x) out.x = p;
+//    if (p > out.y) out.y = p;
+//  }
+//}
+//extractMinMaxDistance(List<Vector3> vs, Vector3 origin, Vector2 out) {
+//  var tmp = new Vector3.zero();
+//  tmp.setFrom(vs[0]).sub(origin);
+//  var p = tmp.length;
+//  out.x = p;
+//  out.y = p;
+//  for (int i = 1; i < vs.length; i++) {
+//    tmp.setFrom(vs[i]).sub(origin);
+//    p = tmp.length;
+//    if (p < out.x) out.x = p;
+//    if (p > out.y) out.y = p;
+//  }
+//}
+
+extractMinMaxDistanceAndProjection(List<Vector3> vs, Vector3 axis, Vector3 origin, Vector2 out) {
   var tmp = new Vector3.zero();
-  tmp.setFrom(vs[0]).sub(origin);
-  var p = tmp.dot(axis);
-  out.x = p;
-  out.y = p;
-  for (int i = 1; i < vs.length; i++) {
+  for (int i = 0; i < vs.length; i++) {
     tmp.setFrom(vs[i]).sub(origin);
-    p = tmp.dot(axis);
+    var p = tmp.dot(axis);
     if (p < out.x) out.x = p;
-    if (p > out.y) out.y = p;
-  }
-}
-extractMinMaxDistance(List<Vector3> vs, Vector3 origin, Vector2 out) {
-  var tmp = new Vector3.zero();
-  tmp.setFrom(vs[0]).sub(origin);
-  var p = tmp.length;
-  out.x = p;
-  out.y = p;
-  for (int i = 1; i < vs.length; i++) {
-    tmp.setFrom(vs[i]).sub(origin);
-    p = tmp.length;
-    if (p < out.x) out.x = p;
-    if (p > out.y) out.y = p;
+    //if (p > out.y) out.y = p;
+    var pl = tmp.length; //( pl is always >= p)
+    //if (pl < out.x) out.x = pl;
+    if (pl > out.y) out.y = pl;
   }
 }
 class ViewportCamera {
