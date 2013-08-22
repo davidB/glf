@@ -10049,7 +10049,7 @@ m=new $.pW(null,3,null,0)
 m.WY="_Color"
 l=new $.ha(z,o,n,m,new $.Ui(null,-1),new $.Ui(null,-1))
 l.Uw(l,c.gWy(),p)
-k=$.S8(c.gWy(),$.r6($.qG().ej("packages/glf/shaders/default.vert")),$.r6($.qG().ej("packages/glf/shaders/default.vert")))
+k=$.S8(c.gWy(),$.r6($.qG().ej("packages/glf/shaders/default.vert")),$.r6($.qG().ej("packages/glf/shaders/default.frag")))
 k.ml(k,new $.kg(this,b,y,x,l))}},
 "+_add:5:0":0},"+Obj3D": [],d4:{"":"Tp;a,b,c,d,e,f,g,h",
 call$1:function(a){$.je(a.gWy(),$.H0(a,"_Color"),0.5,0.5,0.5)
