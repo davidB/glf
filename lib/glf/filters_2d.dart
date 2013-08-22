@@ -61,7 +61,7 @@ class Filter2DRunner {
 
 
   final RenderingContext gl;
-  final filters = new List<Filter2D>();
+  final List<Filter2D> filters = new List<Filter2D>();
   Texture texInit;
   final _fbo0;
   final _fbo1;
