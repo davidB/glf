@@ -511,7 +511,7 @@ class Obj3D {
     if (showNormals) {
       var mdNormal = glf.extractNormals(geometry.meshDef);
       var meshNormal = new glf.Mesh()..setData(ctx.gl, mdNormal);
-      var programCtxN = glf.loadProgramContext(ctx.gl, Uri.parse("packages/glf/shaders/default.vert"), Uri.parse("packages/glf/shaders/default.vert"));
+      var programCtxN = glf.loadProgramContext(ctx.gl, Uri.parse("packages/glf/shaders/default.vert"), Uri.parse("packages/glf/shaders/default.frag"));
 
       programCtxN.then((ctxN) {
         cameraReqN = new glf.RequestRunOn()
