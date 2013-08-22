@@ -15,7 +15,7 @@ class Renderer2SolidCache {
     cameraReq = new glf.RequestRunOn()
     ..ctx = material.ctx
     ..at = (ctx) {
-      material.cfg(ctx);
+      if (material.cfg != null) material.cfg(ctx);
       geometry.injectAndDraw(ctx);
     }
     ;
@@ -33,26 +33,24 @@ class RendererA {
   glf.Filter2DRunner _post2d;
   glf.Filter2DRunner _post2dw1;
 
-  get filters2d => _post2d.filters;
+  List<glf.Filter2D>  get filters2d => _post2d.filters;
 
   get debugView => _post2dw1.texInit;
   set debugView(WebGL.Texture tex) => _post2dw1.texInit = tex;
 
-  final cameraViewport;
+  glf.ViewportCamera _cameraViewport;
+  final _cameraFbo;
+  var _cameraRro;
+  get cameraViewport => _cameraViewport;
+  set cameraViewport(glf.ViewportCamera v) =>_setViewport(v);
 
   var _reqs = new Map<Geometry, Renderer2SolidCache>();
-
-  /// Aabb of the scene used to adjust some parameter (like near, far shadowMapping)
-  /// it is not updated when solid is add (or updated or removed).
-  final sceneAabb = new Aabb3()
-  ..min.setValues(-4.0, -4.0, -1.0)
-  ..max.setValues(4.0, 4.0, 4.0)
-  ;
 
   RendererA(gl) : this.gl = gl,
     _preRunner = new glf.ProgramsRunner(gl),
     _cameraRunner = new glf.ProgramsRunner(gl),
-    cameraViewport = new glf.ViewportCamera.defaultSettings(gl.canvas)
+    _cameraFbo = new glf.FBO(gl)
+  //TODO support resize
   ;
 
   addPrepare(glf.RequestRunOn req) {
@@ -94,20 +92,15 @@ class RendererA {
     //_x2 = gl.getExtension("GL_EXT_draw_buffers");
     _initPostW0();
     _initPostW1();
-    _initCamera();
     _initPre();
   }
 
-  _initCamera() {
-    // Camera default setting for perspective use canvas area full
-    var viewport = cameraViewport;
-    var camera = viewport.camera;
-    camera.position.setValues(0.0, 0.0, 6.0);
-    camera.focusPosition.setValues(0.0, 0.0, 0.0);
-    camera.adjustNearFar(sceneAabb, 0.1, 0.1);
-    //TODO support resize
-    var cameraFbo = new glf.FBO(gl)..make(width : viewport.viewWidth, height : viewport.viewHeight);
-    var r = new glf.RequestRunOn()
+  _setViewport(viewport) {
+    _cameraViewport = viewport;
+    _cameraFbo.dispose();
+    _cameraFbo.make(width : viewport.viewWidth, height : viewport.viewHeight);
+    if (_cameraRro != null) remove(_cameraRro);
+    _cameraRro = new glf.RequestRunOn()
       ..setup= (gl) {
         if (true) {
           // opaque
@@ -125,21 +118,15 @@ class RendererA {
         viewport.setup(gl);
       }
       ..beforeAll = (gl) {
-        gl.bindFramebuffer(WebGL.FRAMEBUFFER, cameraFbo.buffer);
+        gl.bindFramebuffer(WebGL.FRAMEBUFFER, _cameraFbo.buffer);
         gl.viewport(viewport.x, viewport.y, viewport.viewWidth, viewport.viewHeight);
-        //gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clearColor(1.0, 0.0, 0.0, 1.0);
-        //gl.clearColor(1.0, 1.0, 1.0, 1.0);
         gl.clear(WebGL.COLOR_BUFFER_BIT | WebGL.DEPTH_BUFFER_BIT);
-        //gl.clear(WebGL.COLOR_BUFFER_BIT);
       }
       ..beforeEach =  viewport.injectUniforms
-//      ..onRemoveProgramCtx = (prunner, ctx) {
-//        ctx.delete();
-//      }
     ;
-    add(r);
-    _post2d.texInit = cameraFbo.texture;
+    add(_cameraRro);
+    _post2d.texInit = _cameraFbo.texture;
   }
 
   _initPre() {
@@ -175,10 +162,11 @@ class RendererA {
 class Geometry {
   final transforms = new Matrix4.identity();
   final normalMatrix = new Matrix3.zero();
-  final _mesh = new glf.Mesh();
+  final mesh = new glf.Mesh();
   var _md = null;
   var meshNeedUpdate = true;
   var verticesNeedUpdate = false;
+  var normalMatrixNeedUpdate = true;
   get meshDef => _md;
   set meshDef(glf.MeshDef v) {
     _md = v;
@@ -187,18 +175,22 @@ class Geometry {
 
   injectAndDraw(glf.ProgramContext ctx) {
     if (meshNeedUpdate && _md != null) {
-      _mesh.setData(ctx.gl, _md);
+      mesh.setData(ctx.gl, _md);
       meshNeedUpdate = false;
       verticesNeedUpdate = false;
     }
     if (verticesNeedUpdate && _md != null) {
-      _mesh.vertices.setData(ctx.gl, _md.vertices);
+      mesh.vertices.setData(ctx.gl, _md.vertices);
       verticesNeedUpdate = false;
+    }
+    if (normalMatrixNeedUpdate) {
+      glf.makeNormalMatrix(transforms, normalMatrix);
+      normalMatrixNeedUpdate = false;
     }
     glf.injectMatrix4(ctx, transforms, glf.SFNAME_MODELMATRIX);
     glf.injectMatrix3(ctx, normalMatrix, glf.SFNAME_NORMALMATRIX);
-    _mesh.inject(ctx);
-    _mesh.draw(ctx);
+    mesh.inject(ctx);
+    mesh.draw(ctx);
   }
 }
 

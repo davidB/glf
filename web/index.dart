@@ -67,171 +67,6 @@ class EventsPrintControler {
   }
 }
 
-
-
-//class Renderer {
-//  final gl;
-//
-//  final glf.ProgramsRunner lightRunner;
-//  final glf.ProgramsRunner cameraRunner;
-//  final glf.ProgramsRunner postRunner;
-//
-//  var lightCtx = null;
-//
-//  Renderer(gl) : this.gl = gl,
-//    lightRunner = new glf.ProgramsRunner(gl),
-//    cameraRunner = new glf.ProgramsRunner(gl),
-//    postRunner = new glf.ProgramsRunner(gl)
-//  ;
-//
-//  var _x0, _x1, _x2;
-//  init() {
-//    //_x0 = gl.getExtension("OES_standard_derivatives");
-//    //_x1 = gl.getExtension("OES_texture_float");
-//    //_x2 = gl.getExtension("GL_EXT_draw_buffers");
-//    //print(">>>> extension $_x0 $_x1 $_x2");
-//    _initCamera();
-//    _initLight();
-//    _initPost();
-//  }
-//
-//  _initCamera() {
-//    // Camera default setting for perspective use canvas area full
-//    var viewport = new glf.ViewportCamera.defaultSettings(gl.canvas);
-//    viewport.camera.position.setValues(0.0, 0.0, 6.0);
-//
-//    cameraRunner.register(new glf.RequestRunOn()
-//      ..setup= (gl) {
-//        if (true) {
-//          // opaque
-//          gl.disable(GL.BLEND);
-//          gl.depthFunc(GL.LEQUAL);
-//          //gl.depthFunc(GL.LESS); // default value
-//          gl.enable(GL.DEPTH_TEST);
-////        } else {
-////          // blend
-////          gl.disable(GL.DEPTH_TEST);
-////          gl.blendFunc(GL.SRC_ALPHA, GL.ONE);
-////          gl.enable(GL.BLEND);
-//        }
-//        gl.colorMask(true, true, true, true);
-//      }
-//      ..beforeAll = (gl) {
-//        gl.viewport(viewport.x, viewport.y, viewport.viewWidth, viewport.viewHeight);
-//        //gl.clearColor(0.0, 0.0, 0.0, 1.0);
-//        gl.clearColor(1.0, 0.0, 0.0, 1.0);
-//        //gl.clearColor(1.0, 1.0, 1.0, 1.0);
-//        gl.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
-//        //gl.clear(GL.COLOR_BUFFER_BIT);
-//      }
-////      ..onRemoveProgramCtx = (prunner, ctx) {
-////        ctx.delete();
-////      }
-//    );
-//
-//
-//    cameraRunner.register(viewport.makeRequestRunOn());
-//  }
-//
-//  _initLight() {
-//    var _light = new glf.ViewportCamera()
-//      ..viewWidth = 256
-//      ..viewHeight = 256
-//      ..camera.fovRadians = degrees2radians * 55.0
-//      ..camera.aspectRatio = 1.0
-//      ..camera.position.setValues(2.0, 2.0, 4.0)
-//      ..camera.focusPosition.setValues(0.0, 0.0, 0.0)
-//      ;
-//    var scene = new Aabb3()
-//      ..min.setValues(-3.0, -3.0, 0.0)
-//      ..max.setValues(3.0, 3.0, 3.0)
-//      ;
-//    var axis = _light.camera.focusPosition - _light.camera.position;
-//    var v2 = new Vector2.zero();
-//    extractMinMaxProjection(aabbToPoints(scene), axis,v2);
-//    _light.camera.far = math.max(0.1, v2.y);//(_light.camera.focusPosition - _light.camera.position).length * 2;
-//    _light.camera.near = math.max(0.1, v2.x);//math.max(0.5, (_light.camera.focusPosition - _light.camera.position).length - 3.0);
-//    //_light.camera.updateProjectionViewMatrix();
-//
-//    lightFbo = new glf.FBO(gl)..make(width : _light.viewWidth, height : _light.viewHeight);
-//    lightCtx = new glf.ProgramContext(gl, depthVert0, depthFrag0);
-//    //lightCtx = new glf.ProgramContext(gl, depthVert0, normalFrag0);
-//    lightRunner.register(_light.makeRequestRunOn()
-//      ..ctx = lightCtx
-//      ..beforeAll = (gl) {
-//        gl.viewport(0, 0, _light.viewWidth, _light.viewHeight);
-//        gl.clearColor(1.0, 1.0, 1.0, 1.0);
-//        gl.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
-//      }
-//      ..before =(ctx) {
-//        ctx.gl.uniform1f(ctx.getUniformLocation('lightFar'), _light.camera.far);
-//        ctx.gl.uniform1f(ctx.getUniformLocation('lightNear'), _light.camera.near);
-//      }
-//    );
-//
-//    var r = new glf.RequestRunOn()
-//      ..autoData = (new Map()
-//        ..["sLightDepth"] = ((ctx) => glf.injectTexture(ctx, lightFbo.texture, 31, "sLightDepth"))
-//        ..["lightFar"] = ((ctx) => ctx.gl.uniform1f(ctx.getUniformLocation('lightFar'), _light.camera.far))
-//        ..["lightNear"] = ((ctx) => ctx.gl.uniform1f(ctx.getUniformLocation('lightNear'), _light.camera.near))
-//        ..["lightConeAngle"] = ((ctx) => ctx.gl.uniform1f(ctx.getUniformLocation('lightConeAngle'), _light.camera.fovRadians * radians2degrees))
-//        ..["lightProj"] = ((ctx) => glf.injectMatrix4(ctx, _light.camera.projectionMatrix, "lightProj"))
-//        ..["lightView"] = ((ctx) => glf.injectMatrix4(ctx, _light.camera.viewMatrix, "lightView"))
-//        ..["lightRot"] = ((ctx) => glf.injectMatrix3(ctx, _light.camera.rotMatrix, "lightRot"))
-//        ..["lightProjView"] = ((ctx) => glf.injectMatrix4(ctx, _light.camera.projectionViewMatrix, "lightProjView"))
-//      )
-//      ;
-//    cameraRunner.register(r);
-//    postRunner.register(r);
-//  }
-//
-//  _initPost() {
-//    var view2d = new glf.ViewportPlan()
-//    ..viewWidth = 256
-//    ..viewHeight = 256
-//    ..x = 10
-//    ..y = 0
-//    ;
-//    var post2d = new glf.Filter2DRunner(gl, view2d)
-//    ..texInit = _lightFbo.texture
-//    ..add(texFrag)
-//    ;
-//    //postRunner.register(_post.makeRequestRunOn());
-//    postRunner.register(new glf.RequestRunOn()
-//    //..ctx = new glf.ProgramContext(gl, texVert, texFrag2)
-//    //..ctx = new glf.ProgramContext(gl, texVert, texFrag)
-//    ..afterAll =(gl){
-//      post2d.run();
-//    }
-//    );
-//    var kernel = new Float32List.fromList(
-//        [-0.125,-0.125,-0.125,-0.125,1.0,-0.125,-0.125,-0.125,-0.125]
-//        //[0.045,0.122,0.045,0.122,0.332,0.122,0.045,0.122,0.045]
-//        );
-//    var offset = 0.0;
-//    Future.wait([
-//      //HttpRequest.request("packages/glf/shaders/filters_2d/convolution3x3.frag", method: 'GET'),
-//      HttpRequest.request("packages/glf/shaders/filters_2d/x_waves.frag", method: 'GET'),
-//    ])
-//    .then((l) {
-//      post2d.add(
-//        l[0].responseText,
-//        //(ctx) => ctx.gl.uniform1fv(ctx.getUniformLocation('_Kernel[0]'), kernel)
-//        (ctx){
-//          ctx.gl.uniform1f(ctx.getUniformLocation('_Offset'), offset);
-//          offset = (offset + 1.0) % 1000;
-//        }
-//      );
-//    });
-//  }
-//  run() {
-//    lightRunner.run();
-//    cameraRunner.run();
-//    postRunner.run();
-//  }
-//}
-
-
 class Tick {
   double _t = -1.0;
   double _tr = 0.0;
@@ -284,6 +119,13 @@ class Main {
   var _programCtxCache = new glf.ProgramContextCache();
   final onUpdate = new List<Function>();
 
+  /// Aabb of the scene used to adjust some parameter (like near, far shadowMapping)
+  /// it is not updated when solid is add (or updated or removed).
+  final _sceneAabb = new Aabb3()
+  ..min.setValues(-4.0, -4.0, -1.0)
+  ..max.setValues(4.0, 4.0, 4.0)
+  ;
+
   Main(this.renderer, am) :
     am = am,
     factory_filter2d = new Factory_Filter2D()..am = am
@@ -320,6 +162,13 @@ class Main {
         ..["time"] = ((ctx) => ctx.gl.uniform1f(ctx.getUniformLocation('time'), tick.time))
       )
     );
+    var cameraViewport = new glf.ViewportCamera.defaultSettings(renderer.gl.canvas)
+    ..camera.position.setValues(0.0, 0.0, 6.0)
+    ..camera.focusPosition.setValues(0.0, 0.0, 0.0)
+    ..camera.adjustNearFar(_sceneAabb, 0.1, 0.1)
+    ;
+    renderer.cameraViewport = cameraViewport;
+
     _loadAssets().then((x){
       renderer.filters2d.add(factory_filter2d.makeIdentity());
       //renderer.filters2d.add(factory_filter2d.makeBrightness(brightness : 0.0, contrast : 1.0, gamma : 2.2));
@@ -441,7 +290,7 @@ class Main {
       ..camera.aspectRatio = 1.0
       ..camera.position.setValues(2.0, 2.0, 4.0)
       ..camera.focusPosition.setValues(0.0, 0.0, 0.0)
-      ..camera.adjustNearFar(renderer.sceneAabb, 0.1, 0.1);
+      ..camera.adjustNearFar(_sceneAabb, 0.1, 0.1);
       ;
     var lightFbo = new glf.FBO(renderer.gl)..make(width : light.viewWidth, height : light.viewHeight);
     var lightCtx = am['shader_depth_light'];
