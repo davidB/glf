@@ -229,18 +229,19 @@ class Uint16Buffer_Element {
   int length = 0;
 
   setData(RenderingContext gl, Uint16List l) {
-    if (buff != null) {
+    if (buff == null) {
+      buff = gl.createBuffer();
+    } else if (length != l.length) {
       gl.deleteBuffer(buff);
+      buff = gl.createBuffer();
     }
-    buff = gl.createBuffer();
     gl.bindBuffer(ELEMENT_ARRAY_BUFFER, buff);
     gl.bufferDataTyped(ELEMENT_ARRAY_BUFFER, l, STATIC_DRAW);
     length = l.length;
   }
 
   free(RenderingContext gl) {
-    if (buff == null) buff = gl.createBuffer();
-    gl.deleteBuffer(buff);
+    if (buff != null) gl.deleteBuffer(buff);
     buff = null;
   }
 
