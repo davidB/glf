@@ -1,3 +1,5 @@
+precision highp float;
+
 /// Demo of NormalMap + MatCap
 /// In fragment you can change the diffuseColor to use _MatCap0 or _MatCap1 or _MatCap2
 #define NORMALMAP
