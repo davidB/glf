@@ -9,6 +9,7 @@ off
 target
 .buildlog
 web/out
+deploy
 filter
 .idea
 *.orig
