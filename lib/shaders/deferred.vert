@@ -1,4 +1,6 @@
 /// This vertex shader prepares the geometry for rendering to a floating point texture map.
+precision highp float;
+
 uniform mat4 _ProjectionMatrix;
 uniform mat4 _ViewMatrix;
 uniform mat4 _ModelMatrix;

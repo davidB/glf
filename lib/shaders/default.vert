@@ -1,3 +1,5 @@
+precision highp float;
+
 const vec2 ma = vec2(0.5,0.5);
 
 attribute vec3 _Vertex;
