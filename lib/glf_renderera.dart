@@ -32,6 +32,7 @@ class RendererA {
   final glf.ProgramsRunner _cameraRunner;
   glf.Filter2DRunner _post2d;
   glf.Filter2DRunner _post2dw1;
+  final clearColor = new Vector4(1.0, 0.0, 0.0, 1.0);
 
   List<glf.Filter2D>  get filters2d => _post2d.filters;
 
@@ -120,7 +121,7 @@ class RendererA {
       ..beforeAll = (gl) {
         gl.bindFramebuffer(WebGL.FRAMEBUFFER, _cameraFbo.buffer);
         gl.viewport(viewport.x, viewport.y, viewport.viewWidth, viewport.viewHeight);
-        gl.clearColor(1.0, 0.0, 0.0, 1.0);
+        gl.clearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
         gl.clear(WebGL.COLOR_BUFFER_BIT | WebGL.DEPTH_BUFFER_BIT);
       }
       ..beforeEach =  viewport.injectUniforms
