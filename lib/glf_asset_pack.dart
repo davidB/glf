@@ -3,7 +3,6 @@ library glf_asset_pack;
 import 'dart:async';
 import 'dart:html';
 import 'dart:web_gl' as wgl;
-import 'dart:typed_data';
 import 'package:asset_pack/asset_pack.dart';
 import 'glf.dart';
 
