@@ -4,10 +4,11 @@ author: David Bernard
 description: another toolbox for webgl
 homepage: http://github.com/davidB/glf
 dependencies:
-  browser: any
+#  browser: any
   crypto: any
   vector_math: '>=1.3.0'
 dev_dependencies:
   asset_pack:
     git: https://github.com/johnmccutchan/asset_pack.git
   js: any
+  unittest: any
