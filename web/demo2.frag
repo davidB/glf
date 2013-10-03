@@ -10,7 +10,7 @@ varying vec3 vNormal;
 varying vec4 vVertex;
 
 uniform mat4 _ViewMatrix;
-uniform vec3 _Color;
+uniform vec4 _Color;
 
 uniform mat4 lightProj, lightView;
 uniform mat3 lightRot;
@@ -186,10 +186,10 @@ void main(){
 #ifdef RIMLIGHT    
     rimLight(camPos, normal, vVertex.xyz) +
 #endif
-    clamp(lighting, 0.6, 1.0) * _Color
+    clamp(lighting, 0.6, 1.0) * _Color.rgb
   );
 
   gl_FragColor.rgb = excident;
   gl_FragColor.r += r;
-  gl_FragColor.a = 1.0;
+  gl_FragColor.a = _Color.a;
 }

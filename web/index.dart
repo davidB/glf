@@ -251,6 +251,7 @@ class Main {
         md = mdt.makeBox24Vertices(dx: 0.5, dy: 0.5, dz: 0.5);
     }
     if (_showWireframeUI.checked) {
+      print("show wireframe");
       md.lines = mdt.extractWireframe(md.triangles);
       md.triangles = null;
     }
@@ -483,7 +484,7 @@ class Obj3D {
       ..ctx = ctx
       ..cfg = (ctx) {
         // material (fake variation)
-        ctx.gl.uniform3f(ctx.getUniformLocation(glf.SFNAME_COLORS), 0.5, 0.5, 0.5);
+        ctx.gl.uniform4f(ctx.getUniformLocation(glf.SFNAME_COLORS), 0.5, 0.5, 0.5, 1.0);
         glf.injectTexture(ctx, tex, 0);
         glf.injectTexture(ctx, texNormal, 1, '_NormalMap0');
         glf.injectTexture(ctx, texDissolve0, 3, '_DissolveMap0');
@@ -520,7 +521,7 @@ class Obj3D {
         cameraReqN = new glf.RequestRunOn()
           ..ctx = ctxN
           ..at = (ctx) {
-            ctx.gl.uniform3f(ctx.getUniformLocation(glf.SFNAME_COLORS), 0.8, 0.8, 0.8);
+            ctx.gl.uniform4f(ctx.getUniformLocation(glf.SFNAME_COLORS), 0.8, 0.8, 0.8, 1.0);
             glf.makeNormalMatrix(geometry.transforms, geometry.normalMatrix);
             glf.injectMatrix4(ctx, geometry.transforms, glf.SFNAME_MODELMATRIX);
             glf.injectMatrix3(ctx, geometry.normalMatrix, glf.SFNAME_NORMALMATRIX);
@@ -552,10 +553,10 @@ class Plane {
     geometry.meshDef = mdt.makePlane(dx: 3.0, dy: 3.0);
     glf.makeNormalMatrix(geometry.transforms, geometry.normalMatrix);
     var material = new Material()
-    //..transparent = true
+    ..transparent = true
     ..ctx = ctx
     ..cfg = (ctx) {
-      ctx.gl.uniform3f(ctx.getUniformLocation(glf.SFNAME_COLORS), 0.0, 0.5, 0.5);
+      ctx.gl.uniform4f(ctx.getUniformLocation(glf.SFNAME_COLORS), 0.0, 0.5, 0.5, 1.0);
     }
     ;
     renderer.addSolid(geometry, material);
