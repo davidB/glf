@@ -28,11 +28,15 @@ const TexNormalsL = "_TexNormals";
 const TexNormalsN = 30;
 
 main(){
-  var gl = (query("#canvas0") as CanvasElement).getContext3d(alpha: false, depth: true);
-  if (gl == null) {
+  var gl0 = (query("#canvas0") as CanvasElement).getContext3d(antialias: false, premultipliedAlpha: false, alpha: false, depth: true);
+  if (gl0 == null) {
     print("webgl not supported");
     return;
   }
+  var gl = gl0;
+  //gl = new glf.RenderingContextTracer(gl0); // un-comment this line to print gl's call.
+  //gl.printing = false;
+
   //var gli = js.context.gli;
   //var result = gli.host.inspectContext(gl.canvas, gl);
   //var hostUI = new js.Proxy(gli.host.HostUI, result);

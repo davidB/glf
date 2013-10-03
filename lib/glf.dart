@@ -15,6 +15,7 @@ import 'dart:web_gl';
 import 'dart:typed_data';
 import 'package:crypto/crypto.dart'; // for cache
 import 'package:vector_math/vector_math.dart';
+import 'dart:mirrors';
 
 part 'glf/mesh.dart';
 part 'glf/meshdef.dart';
@@ -35,6 +36,31 @@ const SFNAME_PROJECTIONMATRIX = "_ProjectionMatrix";
 const SFNAME_PROJECTIONVIEWMATRIX = "_ProjectionViewMatrix";
 const SFNAME_PIXELSIZE = "_PixelSize";
 
+/// A class to wrappe a WebGL RenderingContext and print every call
+/// To use for debug only, eg:
+///    var gl0 = (query("#canvas0") as CanvasElement).getContext3d(alpha: false, depth: true);
+///    var gl = gl0;
+///    gl = new glf.RenderingContextTracer(gl0);
+///    ...
+///    var am = initAssetManager(gl);
+///    var renderer = new RendererA(gl);
+///    ...
+///    gl.printing = true;
+///
+///  Run this class in DartVM only !
+class RenderingContextTracer implements RenderingContext{
+  final  _wrappee;
+  bool printing = false;
+
+  RenderingContextTracer(wrappee) :
+    _wrappee = reflect(wrappee)
+  ;
+
+  noSuchMethod(Invocation msg) {
+    if (printing) print("[TRACE] ${msg.memberName}(${msg.positionalArguments})");
+    return _wrappee.delegate(msg);
+  }
+}
 
 /// Create a WebGL [Program], compiling [Shader]s from passed in sources and
 /// cache [UniformLocation]s and AttribLocations.
