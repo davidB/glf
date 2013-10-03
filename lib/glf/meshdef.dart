@@ -38,9 +38,21 @@ class MeshDefTools {
     return out;
   }
 
+  findCenter(Vector3 out, Float32List vertices) {
+    out.setZero();
+    for(var i = 0; i < vertices.length; i+=3 ){
+      out.x += vertices[i + 0];
+      out.y += vertices[i + 1];
+      out.z += vertices[i + 2];
+    }
+    out.scale(3.0/vertices.length);
+    return out;
+  }
+
   isClockwise(Float32List vertices, Float32List normals, Uint16List triangles) {
     Vector3 n = _v10;
-    Vector3 navg = _v11;
+    Vector3 center = findCenter(_v11, vertices);
+    Vector3 navg = _v00;
     var out = true;
     for(var i = 0; i < triangles.length; i += 3) {
       var i0 = triangles[i + 0];
@@ -54,6 +66,8 @@ class MeshDefTools {
       ).normalize();
       var dir = navg.dot(n);
       if (dir <= 0) print("wrong triangle at ${i} : ${navg} ${n}");
+      _v01.setValues(vertices[i0 * 3], vertices[i0 * 3 + 1], vertices[i0 * 3 + 2]).sub(center);
+      if (navg.dot(_v01) < 0) print("wrong normal (look center) at ${i} : ${navg} ${n}");
       out = out && (dir > 0);
     }
     return out;
@@ -127,14 +141,7 @@ class MeshDefTools {
     }
     trianglesOffset = tessellation0(out.triangles, nbpoints, trianglesOffset, nbpoints);
     // make side faces
-    var center = _v11.setZero();
-    for(var p = 0; p < nbpoints; p++ ){
-      var i = p * 3;
-      center.x += vertices[i + 0];
-      center.y += vertices[i + 1];
-      center.z += vertices[i + 2];
-    }
-    center.scale(1.0/nbpoints);
+    var center = findCenter(_v11, vertices);
 
     for(var f = 0; f < nbpoints; f++ ){
       var p0 = (nbpoints * 2) + (f * 4);
