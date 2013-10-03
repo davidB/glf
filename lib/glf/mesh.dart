@@ -21,18 +21,34 @@ class Mesh {
     if (md.vertices != null){
       if (tryCheck) check(md);
       vertices.setData(gl, md.vertices);
+    } else {
+      vertices.free(gl);
     }
     if (md.normals != null){
       normals.setData(gl, md.normals);
+    } else {
+      normals.free(gl);
     }
     if (md.texCoords != null){
       texCoords.setData(gl, md.texCoords);
+    } else {
+      texCoords.free(gl);
     }
     if (md.colors != null){
       colors.setData(gl, md.colors);
+    } else {
+      colors.free(gl);
     }
-    if (md.triangles != null) triangles.setData(gl, md.triangles);
-    if (md.lines != null) lines.setData(gl, md.lines);
+    if (md.triangles != null){
+      triangles.setData(gl, md.triangles);
+    } else {
+      triangles.free(gl);
+    }
+    if (md.lines != null) {
+      lines.setData(gl, md.lines);
+    } else {
+      lines.free(gl);
+    }
   }
   check(MeshDef md) {
     var length = md.vertices.length / vertices.spacing;

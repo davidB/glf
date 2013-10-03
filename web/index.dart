@@ -251,7 +251,6 @@ class Main {
         md = mdt.makeBox24Vertices(dx: 0.5, dy: 0.5, dz: 0.5);
     }
     if (_showWireframeUI.checked) {
-      print("show wireframe");
       md.lines = mdt.extractWireframe(md.triangles);
       md.triangles = null;
     }
