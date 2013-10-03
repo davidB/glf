@@ -94,6 +94,8 @@ class Tick {
   }
 }
 
+var mdt = new glf.MeshDefTools();
+
 class Main {
 
   final RendererA renderer;
@@ -234,22 +236,22 @@ class Main {
     var md = null;
     switch(_selectMeshUI.value) {
       case 'box24' :
-        md = glf.makeMeshDef_box24Vertices(dx: 2.0, dy: 1.0, dz: 0.5, ty: 1.0);
+        md = mdt.makeBox24Vertices(dx: 2.0, dy: 1.0, dz: 0.5, ty: 1.0);
         break;
       case 'box24-t' :
-        md = glf.makeMeshDef_box24Vertices(dx: 2.0, dy: 1.0, dz: 0.5, tx: 2.0, ty: 1.0, tz: 0.5);
+        md = mdt.makeBox24Vertices(dx: 2.0, dy: 1.0, dz: 0.5, tx: 2.0, ty: 1.0, tz: 0.5);
         break;
       case 'cube8' :
-        md = glf.makeMeshDef_box8Vertices(dx: 0.5, dy: 0.5, dz: 0.5);
+        md = mdt.makeBox8Vertices(dx: 0.5, dy: 0.5, dz: 0.5);
         break;
       case 'sphereL':
-        md = glf.makeMeshDef_sphere(subdivisionsAxis : sub, subdivisionsHeight : sub);
+        md = mdt.makeSphere(subdivisionsAxis : sub, subdivisionsHeight : sub);
         break;
       default:
-        md = glf.makeMeshDef_box24Vertices(dx: 0.5, dy: 0.5, dz: 0.5);
+        md = mdt.makeBox24Vertices(dx: 0.5, dy: 0.5, dz: 0.5);
     }
     if (_showWireframeUI.checked) {
-      md.lines = glf.extractWireframe(md.triangles);
+      md.lines = mdt.extractWireframe(md.triangles);
       md.triangles = null;
     }
     return md;
@@ -337,10 +339,11 @@ class Main {
     var pre = new glf.RequestRunOn()
       ..ctx = ctx
       ..before =(ctx) {
-        ctx.gl.bindFramebuffer(WebGL.FRAMEBUFFER, fbo.buffer);
-        ctx.gl.viewport(vp.x, vp.y, vp.viewWidth, vp.viewHeight);
-        ctx.gl.clearColor(1.0, 1.0, 1.0, 1.0);
-        ctx.gl.clear(WebGL.COLOR_BUFFER_BIT | WebGL.DEPTH_BUFFER_BIT);
+        var gl = ctx.gl;
+        gl.bindFramebuffer(WebGL.FRAMEBUFFER, fbo.buffer);
+        gl.viewport(vp.x, vp.y, vp.viewWidth, vp.viewHeight);
+        gl.clearColor(1.0, 1.0, 1.0, 1.0);
+        gl.clear(WebGL.COLOR_BUFFER_BIT | WebGL.DEPTH_BUFFER_BIT);
         vp.injectUniforms(ctx);
       }
     ;
@@ -509,7 +512,7 @@ class Obj3D {
     onUpdate.add(upd0);
 
     if (showNormals) {
-      var mdNormal = glf.extractNormals(geometry.meshDef);
+      var mdNormal = mdt.extractNormals(geometry.meshDef);
       var meshNormal = new glf.Mesh()..setData(ctx.gl, mdNormal);
       var programCtxN = glf.loadProgramContext(ctx.gl, Uri.parse("packages/glf/shaders/default.vert"), Uri.parse("packages/glf/shaders/default.frag"));
 
@@ -546,9 +549,10 @@ class Plane {
 
 
   _add(renderer, ctx) {
-    geometry.meshDef = glf.makeMeshDef_plane(dx: 3.0, dy: 3.0);
+    geometry.meshDef = mdt.makePlane(dx: 3.0, dy: 3.0);
     glf.makeNormalMatrix(geometry.transforms, geometry.normalMatrix);
     var material = new Material()
+    //..transparent = true
     ..ctx = ctx
     ..cfg = (ctx) {
       ctx.gl.uniform3f(ctx.getUniformLocation(glf.SFNAME_COLORS), 0.0, 0.5, 0.5);
