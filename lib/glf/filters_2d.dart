@@ -80,6 +80,8 @@ class Filter2DRunner {
     plan.setup(gl);
     var tex0 = texInit;
     var dest = _fbo0;
+    //gl.disable(BLEND);
+    //gl.disable(DEPTH_TEST);
     for(var i = 0; i < filters.length; ++i){
       if (i > 0) {
         tex0 = (dest == _fbo0) ? _fbo1.texture : _fbo0.texture;

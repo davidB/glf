@@ -17,7 +17,7 @@ import 'package:crypto/crypto.dart'; // for cache
 import 'package:vector_math/vector_math.dart';
 
 part 'glf/mesh.dart';
-part 'glf/mesh_primitives.dart';
+part 'glf/meshdef.dart';
 part 'glf/textures.dart';
 part 'glf/viewport.dart';
 part 'glf/filters_2d.dart';
@@ -48,10 +48,6 @@ class ProgramContext {
   final _uniforms = new Map<String, UniformLocation>();
   Shader _vertShader;
   Shader _fragShader;
-
-  // following field are stored in ProgramContext to avoid usage on an associative array ProgramContext -> RunOnProgramContext
-  final _befores = new List<RunOnProgramContext>();
-  final _ats = new List<RunOnProgramContext>();
 
   ProgramContext(this.gl, String vertSrc, String fragSrc) {
     _vertShader = _compileShader(gl, vertSrc, VERTEX_SHADER);
@@ -119,9 +115,18 @@ class ProgramContextCache {
   }
 }
 
+class _ProgramContextEntry {
+  // following field can't be stored in ProgramContext to avoid usage on an
+  // associative array ProgramContext -> RunOnProgramContext;
+  // because a ProgramContext can be use in separated ProgramsRunner
+  // for different context (opaque, transparent, ...)
+  ProgramContext ctx;
+  final _befores = new List<RunOnProgramContext>();
+  final _ats = new List<RunOnProgramContext>();
+}
 class ProgramsRunner {
   final RenderingContext gl;
-  final _ctxs = new List<ProgramContext>();
+  final _ctxs = new List<_ProgramContextEntry>();
   final _setups = new List<RunOnRenderingContext>();
   final _beforeAlls = new List<RunOnRenderingContext>();
   final _beforeEachs = new List<RunOnProgramContext>();
@@ -131,8 +136,10 @@ class ProgramsRunner {
   final _onRemoveProgramCtxs = new List<RunOnProgramContextRegistration>();
   final _autoData = new Map<String, RunOnProgramContext>();
   final _atEachs = new List<RunOnProgramContext>();
+  ProgramsRunner parent;
 
   ProgramsRunner(this.gl);
+  get lg => _ctxs.length;
 
   register(RequestRunOn req) {
     if ((req.ctx != null) && (req.ctx.gl != gl)) throw new Exception("ProgramsRunner only accept request about same RenderingContext : req.ctx.gl != this.gl");
@@ -150,14 +157,16 @@ class ProgramsRunner {
     });
 
     if (req.ctx != null) {
-      var isNew = !_ctxs.contains(req.ctx);
+      var e = _ctxs.firstWhere((x) => x.ctx ==req.ctx, orElse : () => null);
+      var isNew = e == null;
       if (isNew) {
-        _ctxs.add(req.ctx);
+        e = new _ProgramContextEntry()..ctx = req.ctx;
+        _ctxs.add(e);
       }
-      if (req.before != null) req.ctx._befores.add(req.before);
-      if (req.at != null) req.ctx._ats.add(req.at);
+      if (req.before != null) e._befores.add(req.before);
+      if (req.at != null) e._ats.add(req.at);
       if (isNew) {
-        _onAddProgramCtxs.forEach((f)=> f(this, req.ctx));
+        _onAddProgramCtxs.forEach((f)=> f(this, e.ctx));
       }
     } else {
       if (req.before != null) throw new Exception("try to register 'before' but no 'ctx' defined");
@@ -181,15 +190,21 @@ class ProgramsRunner {
     });
 
     if (req.ctx != null) {
-      if (req.before != null) req.ctx._befores.remove(req.before);
-      if (req.at != null){
-        req.ctx._ats.remove(req.at);
-        if (req.ctx._ats.length == 0) {
-          _onRemoveProgramCtxs.forEach((f)=> f(this, req.ctx));
-          _ctxs.remove(req.ctx);
+      var e = _ctxs.firstWhere((x) => x.ctx == req.ctx, orElse : () => null);
+      if (e != null) {
+        if (req.before != null) e._befores.remove(req.before);
+        if (req.at != null) e._ats.remove(req.at);
+        if (e._ats.length == 0 && e._befores.length == 0) {
+          _onRemoveProgramCtxs.forEach((f)=> f(this, e.ctx));
+          _ctxs.remove(e);
         }
       }
     }
+  }
+
+  _autoDataForEach(ctx) {
+    if (parent != null) parent._autoDataForEach(ctx);
+    _autoData.values.forEach((f) => f(ctx));
   }
 
   //TODO should be to most optimized call
@@ -200,17 +215,19 @@ class ProgramsRunner {
     _setups.forEach((f) => f(gl));
     _setups.clear();
 
-    gl.bindFramebuffer(FRAMEBUFFER, null);
+    //gl.bindFramebuffer(FRAMEBUFFER, null);
     _beforeAlls.forEach((f) => f(gl));
 
-    _ctxs.forEach((ctx) {
+    _ctxs.forEach((e) {
+      var ctx = e.ctx;
+      //if (e._ats.length == 0) return;
       // useProgram is done out of draw to allow factorisation later
       ctx.gl.useProgram(ctx.program);
-      _autoData.values.forEach((f) => f(ctx));
+      _autoDataForEach(ctx);
       _beforeEachs.forEach((f) => f(ctx));
-      ctx._befores.forEach((f) => f(ctx));
+      e._befores.forEach((f) => f(ctx));
       _atEachs.forEach((f) => f(ctx));
-      ctx._ats.forEach((f) => f(ctx));
+      e._ats.forEach((f) => f(ctx));
 //      _atEachs.forEach((f){
 //        _beforeEachs.forEach((f) => f(ctx));
 ////        ctx.gl.useProgram(ctx.program);

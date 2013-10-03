@@ -30,6 +30,8 @@ class RendererA {
 
   final glf.ProgramsRunner _preRunner;
   final glf.ProgramsRunner _cameraRunner;
+  final glf.ProgramsRunner _cameraRunnerOpaque; // for opaque
+  final glf.ProgramsRunner _cameraRunnerTransparent; // for transparent solid
   glf.Filter2DRunner _post2d;
   glf.Filter2DRunner _post2dw1;
   final clearColor = new Vector4(1.0, 0.0, 0.0, 1.0);
@@ -41,7 +43,7 @@ class RendererA {
 
   glf.ViewportCamera _cameraViewport;
   final _cameraFbo;
-  var _cameraRro;
+  var _cameraRro = new List<glf.RequestRunOn>();
   get cameraViewport => _cameraViewport;
   set cameraViewport(glf.ViewportCamera v) =>_setViewport(v);
 
@@ -50,9 +52,14 @@ class RendererA {
   RendererA(gl) : this.gl = gl,
     _preRunner = new glf.ProgramsRunner(gl),
     _cameraRunner = new glf.ProgramsRunner(gl),
+    _cameraRunnerOpaque = new glf.ProgramsRunner(gl),
+    _cameraRunnerTransparent = new glf.ProgramsRunner(gl),
     _cameraFbo = new glf.FBO(gl)
   //TODO support resize
-  ;
+  {
+    _cameraRunnerOpaque.parent = _cameraRunner;
+    _cameraRunnerTransparent.parent = _cameraRunner;
+  }
 
   addPrepare(glf.RequestRunOn req) {
     _preRunner.register(req);
@@ -73,15 +80,23 @@ class RendererA {
   addSolid(Geometry geometry, Material material) {
     var e = new Renderer2SolidCache(geometry, material);
     _reqs[geometry] = e;
-    addPrepare(e.geomReq);
-    add(e.cameraReq);
+    if (e.material.pre) addPrepare(e.geomReq);
+    if (e.material.transparent) {
+      _cameraRunnerTransparent.register(e.cameraReq);
+    } else {
+      _cameraRunnerOpaque.register(e.cameraReq);
+    }
   }
 
   removeSolid(Geometry geometry) {
     var e = _reqs[geometry];
     if (e != null) {
       removePrepare(e.geomReq);
-      remove(e.cameraReq);
+      if (e.material.transparent) {
+        _cameraRunnerTransparent.unregister(e.cameraReq);
+      } else {
+        _cameraRunnerOpaque.unregister(e.cameraReq);
+      }
       _reqs[geometry] = null;
     }
   }
@@ -96,27 +111,30 @@ class RendererA {
     _initPre();
   }
 
+
   _setViewport(viewport) {
-    _cameraViewport = viewport;
+    // remove previous viewport
+    _cameraRro.forEach((x) => _cameraRunnerOpaque.unregister(x));
     _cameraFbo.dispose();
+
+    // set new viewport
+    _cameraViewport = viewport;
     _cameraFbo.make(width : viewport.viewWidth, height : viewport.viewHeight);
-    if (_cameraRro != null) remove(_cameraRro);
-    _cameraRro = new glf.RequestRunOn()
+
+    var rro0 = new glf.RequestRunOn()
+    ..beforeEach =  viewport.injectUniforms
+    ;
+
+    _cameraRro
+    ..add(rro0)
+    ..add(new glf.RequestRunOn()
       ..setup= (gl) {
-        if (true) {
-          // opaque
-          gl.disable(WebGL.BLEND);
-          gl.depthFunc(WebGL.LEQUAL);
-          //gl.depthFunc(WebGL.LESS); // default value
-          gl.enable(WebGL.DEPTH_TEST);
-//        } else {
-//          // blend
-//          gl.disable(WebGL.DEPTH_TEST);
-//          gl.blendFunc(WebGL.SRC_ALPHA, WebGL.ONE);
-//          gl.enable(WebGL.BLEND);
-        }
         gl.colorMask(true, true, true, true);
+        gl.depthFunc(WebGL.LEQUAL);
+        //gl.depthFunc(WebGL.LESS); // default value
+        gl.enable(WebGL.DEPTH_TEST);
         viewport.setup(gl);
+        _cameraRunnerOpaque.register(rro0);
       }
       ..beforeAll = (gl) {
         gl.bindFramebuffer(WebGL.FRAMEBUFFER, _cameraFbo.buffer);
@@ -124,9 +142,47 @@ class RendererA {
         gl.clearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
         gl.clear(WebGL.COLOR_BUFFER_BIT | WebGL.DEPTH_BUFFER_BIT);
       }
-      ..beforeEach =  viewport.injectUniforms
+    )
+    ..add(new glf.RequestRunOn()
+      ..setup = (gl) {
+        gl.cullFace(WebGL.FRONT);
+        gl.frontFace(WebGL.CW);
+      }
+      ..beforeAll = (gl) {
+        // opaque
+        //gl.enable(WebGL.CULL_FACE);
+        gl.disable(WebGL.BLEND);
+        gl.enable(WebGL.DEPTH_TEST);
+        _cameraRunnerOpaque.run();
+      }
+      ..afterAll = (gl) {
+      }
+      ..teardown = (gl) {
+        _cameraRunnerOpaque.unregister(rro0);
+      }
+    )
+    ..add(new glf.RequestRunOn()
+      ..setup = (gl) {
+        _cameraRunnerTransparent.register(rro0);
+        gl.blendFunc(WebGL.SRC_ALPHA, WebGL.ONE_MINUS_SRC_ALPHA);
+        gl.blendEquation(WebGL.FUNC_ADD);
+      }
+      ..beforeAll = (gl) {
+        // transparent
+        //gl.disable(WebGL.DEPTH_TEST);
+        //gl.disable(WebGL.CULL_FACE);
+        gl.enable(WebGL.BLEND);
+        _cameraRunnerTransparent.run();
+        // not optimal but secure
+        //gl.enable(WebGL.CULL_FACE);
+        gl.disable(WebGL.BLEND);
+      }
+      ..teardown = (gl) {
+        _cameraRunnerTransparent.unregister(rro0);
+      }
+    )
     ;
-    add(_cameraRro);
+    _cameraRro.forEach((x) => _cameraRunner.register(x));
     _post2d.texInit = _cameraFbo.texture;
   }
 
@@ -198,4 +254,6 @@ class Geometry {
 class Material {
   glf.ProgramContext ctx = null;
   glf.RunOnProgramContext cfg = null;
+  bool transparent = false;
+  bool pre = true;
 }
