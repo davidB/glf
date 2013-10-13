@@ -75,14 +75,88 @@ storeImageToTexture(RenderingContext gl, Texture tex, ImageElement ele) {
   return tex;
 }
 
-injectTexture(ProgramContext ctx, Texture texture, [int textureSlot = 0, String sfname]) {
-  if (sfname == null) sfname = "_Tex${textureSlot}";
+injectTexture(ProgramContext ctx, Texture texture, [int textureUnit = 0, String sfname]) {
+  if (sfname == null) sfname = "_Tex${textureUnit}";
   var uloc = ctx.getUniformLocation(sfname);
   if (uloc == null) return;
   //Set slot 0 as the active Texture
-  ctx.gl.activeTexture(TEXTURE0 + textureSlot);
+  ctx.gl.activeTexture(TEXTURE0 + textureUnit);
   //Load in the Texture To Memory
   ctx.gl.bindTexture(TEXTURE_2D, texture);
   //Update The Texture Sampler in the fragment shader to use slot textureIdx
-  ctx.gl.uniform1i(uloc, textureSlot);
+  ctx.gl.uniform1i(uloc, textureUnit);
+}
+
+class TextureUnitCache {
+  final RenderingContext gl;
+  int _max;
+  int _lastFind = 0; //use as a timestamp for a LRU
+  Map<Texture, _TextureUnitCacheEntry> _cache;
+  
+  TextureUnitCache(this.gl) {
+    _max = math.max(32, gl.getParameter(MAX_TEXTURE_IMAGE_UNITS));
+    _cache = new Map<Texture, _TextureUnitCacheEntry>();
+  }
+  
+  inject(ProgramContext ctx, Texture texture, String sfname) {
+    var uloc = ctx.getUniformLocation(sfname);
+    if (uloc == null){
+      return -1;
+    }
+    var textureUnit = _find(texture);
+    //Update The Texture Sampler in the fragment shader to use slot textureIdx
+    ctx.gl.uniform1i(uloc, textureUnit);
+    return textureUnit;
+  }
+  
+  _find(Texture texture) {
+    _lastFind++;
+    var e = _cache[texture];
+    if (e == null) {
+      if (_cache.length >= _max) {
+        var oldest = _findOldest();
+        _cache.remove(oldest.texture);
+        oldest.texture = texture;
+        _cache[texture] = oldest;
+      } else {
+        e = new _TextureUnitCacheEntry()
+        ..unit = _findUnusedUnit()
+        ..texture = texture
+        ;
+        _cache[texture] = e;
+      }
+    }
+    //Set slot 0 as the active Texture
+    gl.activeTexture(TEXTURE0 + e.unit);
+    //Load in the Texture To Memory
+    gl.bindTexture(TEXTURE_2D, e.texture);
+    e.lastFind = _lastFind;
+    return e.unit;  
+  }
+
+  _findOldest() {
+    return _cache.values.fold(null, (acc, e){
+      return (acc == null) ? e : (acc.lastFind < e.lastFind) ? acc : e;
+    });
+  }
+
+  _findUnusedUnit() {
+    var freeset = _cache.values.fold(0, (acc, e){
+      return acc | (1 << e.unit);
+    });
+    for (var i = 0; i < _max; ++i) {
+      if ((freeset & (1 << i)) == 0) return i;  
+    }
+    return -1;
+  }
+
+  delete(Texture texture) {
+    _cache.remove(texture);
+    gl.deleteTexture(texture);
+  }
+}
+class _TextureUnitCacheEntry {
+  Texture texture;
+  int unit;
+  int lastFind;
 }

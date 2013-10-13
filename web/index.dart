@@ -21,11 +21,10 @@ import 'package:glf/glf_asset_pack.dart';
 import 'package:glf/glf_renderera.dart';
 
 const TexNormalsRandomL = "_TexNormalsRandom";
-const TexNormalsRandomN = 18;
 const TexVerticesL = "_TexVertices";
-const TexVerticesN = 19;
 const TexNormalsL = "_TexNormals";
-const TexNormalsN = 17;
+
+var textures;
 
 main(){
   var gl0 = (query("#canvas0") as CanvasElement).getContext3d(antialias: false, premultipliedAlpha: false, alpha: false, depth: true);
@@ -43,6 +42,7 @@ main(){
   //result.hostUI = hostUI; // just so we can access it later for debugging
   var am = initAssetManager(gl);
   new Main(new RendererA(gl), am).start();
+  textures = new glf.TextureUnitCache(gl);
 }
 
 AssetManager initAssetManager(gl) {
@@ -132,9 +132,10 @@ class Main {
   ..max.setValues(4.0, 4.0, 4.0)
   ;
 
-  Main(this.renderer, am) :
-    am = am,
-    factory_filter2d = new Factory_Filter2D()..am = am
+  Main(renderer0, am0) :
+    renderer = renderer0,
+    am = am0,
+    factory_filter2d = new Factory_Filter2D()..am = am0
   ;
 
   start() {
@@ -315,7 +316,7 @@ class Main {
 
     var r = new glf.RequestRunOn()
       ..autoData = (new Map()
-        ..["sLightDepth"] = ((ctx) => glf.injectTexture(ctx, lightFbo.texture, 16, "sLightDepth"))
+        ..["sLightDepth"] = ((ctx) => textures.inject(ctx, lightFbo.texture, "sLightDepth"))
         ..["lightFar"] = ((ctx) => ctx.gl.uniform1f(ctx.getUniformLocation('lightFar'), light.camera.far))
         ..["lightNear"] = ((ctx) => ctx.gl.uniform1f(ctx.getUniformLocation('lightNear'), light.camera.near))
         ..["lightConeAngle"] = ((ctx) => ctx.gl.uniform1f(ctx.getUniformLocation('lightConeAngle'), light.camera.fovRadians * radians2degrees))
@@ -329,17 +330,17 @@ class Main {
     renderer.add(r);
     renderer.addPrepare(r);
     renderer.addPrepare(lightR);
-    //renderer.debugView = lightFbo.texture;
+    renderer.debugView = lightFbo.texture;
   }
 
   _initRendererPreDeferred() {
-    var fboN = _initRendererPreDeferred0(renderer.cameraViewport, am['shader_deferred_normals'], TexNormalsL, TexNormalsN);
-    var fboV = _initRendererPreDeferred0(renderer.cameraViewport, am['shader_deferred_vertices'], TexVerticesL, TexVerticesN);
-    renderer.debugView = fboN.texture;
+    var fboN = _initRendererPreDeferred0(renderer.cameraViewport, am['shader_deferred_normals'], TexNormalsL);
+    var fboV = _initRendererPreDeferred0(renderer.cameraViewport, am['shader_deferred_vertices'], TexVerticesL);
+    //renderer.debugView = fboN.texture;
     _initSSAO(fboN.texture, fboV.texture, am['texNormalsRandom']);
   }
 
-  _initRendererPreDeferred0(vp, ctx, texName, texNum) {
+  _initRendererPreDeferred0(vp, ctx, texName) {
     var fbo = new glf.FBO(renderer.gl)..make(width : vp.viewWidth, height : vp.viewHeight, type: WebGL.FLOAT);
     var pre = new glf.RequestRunOn()
       ..ctx = ctx
@@ -355,7 +356,7 @@ class Main {
 
     var r = new glf.RequestRunOn()
       ..autoData = (new Map()
-        ..[texName] = ((ctx) => glf.injectTexture(ctx, fbo.texture, texNum, texName))
+        ..[texName] = ((ctx) => textures.inject(ctx, fbo.texture, texName))
       )
       ;
     renderer.add(r);
@@ -370,9 +371,9 @@ class Main {
       ctx.gl.uniform2f(ctx.getUniformLocation('_Attenuation'), 1.0, 5.0); // (0,0) -> (2, 10) def (1.0, 5.0)
       ctx.gl.uniform1f(ctx.getUniformLocation('_SamplingRadius'), 15.0); // 0 -> 40
       ctx.gl.uniform1f(ctx.getUniformLocation('_OccluderBias'), 0.05); // 0.0 -> 0.2, def 0.05
-      glf.injectTexture(ctx, texNormals, TexNormalsN, TexNormalsL);
-      glf.injectTexture(ctx, texVertices, TexVerticesN, TexVerticesL);
-      glf.injectTexture(ctx, texNormalsRandom, TexNormalsRandomN, TexNormalsRandomL);
+      textures.inject(ctx, texNormals, TexNormalsL);
+      textures.inject(ctx, texVertices, TexVerticesL);
+      textures.inject(ctx, texNormalsRandom, TexNormalsRandomL);
     };
     renderer.filters2d.insert(0, ssao);
   }
@@ -493,14 +494,14 @@ class Obj3D {
       ..cfg = (ctx) {
         // material (fake variation)
         ctx.gl.uniform4f(ctx.getUniformLocation(glf.SFNAME_COLORS), 0.5, 0.5, 0.5, 1.0);
-        glf.injectTexture(ctx, tex, 0);
-        glf.injectTexture(ctx, texNormal, 1, '_NormalMap0');
-        glf.injectTexture(ctx, texDissolve0, 3, '_DissolveMap0');
-        glf.injectTexture(ctx, texDissolve1, 4, '_DissolveMap1');
-        glf.injectTexture(ctx, texDissolve2, 5, '_DissolveMap2');
-        glf.injectTexture(ctx, texMatCap0, 10, '_MatCap0');
-        glf.injectTexture(ctx, texMatCap1, 11, '_MatCap1');
-        glf.injectTexture(ctx, texMatCap2, 12, '_MatCap2');
+        textures.inject(ctx, tex, '_Tex0');
+        textures.inject(ctx, texNormal, '_NormalMap0');
+        textures.inject(ctx, texDissolve0, '_DissolveMap0');
+        textures.inject(ctx, texDissolve1, '_DissolveMap0');
+        textures.inject(ctx, texDissolve2, '_DissolveMap0');
+        textures.inject(ctx, texMatCap0, '_MatCap0');
+        textures.inject(ctx, texMatCap1, '_MatCap1');
+        textures.inject(ctx, texMatCap2, '_MatCap2');
       }
     ;
     renderer.addSolid(geometry, material);
@@ -533,8 +534,8 @@ class Obj3D {
             glf.makeNormalMatrix(geometry.transforms, geometry.normalMatrix);
             glf.injectMatrix4(ctx, geometry.transforms, glf.SFNAME_MODELMATRIX);
             glf.injectMatrix3(ctx, geometry.normalMatrix, glf.SFNAME_NORMALMATRIX);
-            glf.injectTexture(ctx, tex, 0);
-            glf.injectTexture(ctx, texNormal, 1);
+            textures.inject(ctx, tex, '_Tex0');
+            textures.inject(ctx, texNormal, '_NormalMap0');
             // vertices of the mesh can be modified in update loop, so update the data to GPU
             //mesh2.vertices.setData(ctx.gl, md2.vertices);
             meshNormal.inject(ctx);
