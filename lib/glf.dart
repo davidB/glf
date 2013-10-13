@@ -77,9 +77,22 @@ class ProgramContext {
   var usage = 0;
 
   ProgramContext(this.gl, String vertSrc, String fragSrc) {
-    _vertShader = _compileShader(gl, vertSrc, VERTEX_SHADER);
-    _fragShader = _compileShader(gl, fragSrc, FRAGMENT_SHADER);
-    program = _linkProgram(gl, _vertShader, _fragShader);
+    try {
+      _vertShader = _compileShader(gl, vertSrc, VERTEX_SHADER);
+      _fragShader = _compileShader(gl, fragSrc, FRAGMENT_SHADER);
+      program = _linkProgram(gl, _vertShader, _fragShader);
+    } finally {
+      if (_fragShader != null) {
+        gl.detachShader(program, _fragShader);
+        gl.deleteShader(_fragShader);
+        _fragShader = null;
+      }
+      if (_vertShader != null) {
+        gl.detachShader(program, _vertShader);
+        gl.deleteShader(_vertShader);
+        _vertShader = null;
+      }
+    }
   }
 
   int getAttribLocation(String v) {
@@ -109,16 +122,6 @@ class ProgramContext {
     });
   }
   delete() {
-    if (_fragShader != null) {
-      gl.detachShader(program, _fragShader);
-      gl.deleteShader(_fragShader);
-      _fragShader = null;
-    }
-    if (_vertShader != null) {
-      gl.detachShader(program, _vertShader);
-      gl.deleteShader(_vertShader);
-      _vertShader = null;
-    }
     if (program != null) {
      gl.deleteProgram(program);
      program = null;
