@@ -21,11 +21,11 @@ import 'package:glf/glf_asset_pack.dart';
 import 'package:glf/glf_renderera.dart';
 
 const TexNormalsRandomL = "_TexNormalsRandom";
-const TexNormalsRandomN = 28;
+const TexNormalsRandomN = 18;
 const TexVerticesL = "_TexVertices";
-const TexVerticesN = 29;
+const TexVerticesN = 19;
 const TexNormalsL = "_TexNormals";
-const TexNormalsN = 30;
+const TexNormalsN = 17;
 
 main(){
   var gl0 = (query("#canvas0") as CanvasElement).getContext3d(antialias: false, premultipliedAlpha: false, alpha: false, depth: true);
@@ -180,6 +180,7 @@ class Main {
       //renderer.filters2d.add(factory_filter2d.makeBrightness(brightness : 0.0, contrast : 1.0, gamma : 2.2));
       //renderer.filters2d.add(factory_filter2d.makeConvolution3(Factory_Filter2D.c3_boxBlur));
       //renderer.filters2d.add(factory_filter2d.makeXWaves(() => tick.time / 1000.0));
+      renderer.filters2d.add(factory_filter2d.makeFXAA());
       _initRendererPre();
     });
 
@@ -314,7 +315,7 @@ class Main {
 
     var r = new glf.RequestRunOn()
       ..autoData = (new Map()
-        ..["sLightDepth"] = ((ctx) => glf.injectTexture(ctx, lightFbo.texture, 31, "sLightDepth"))
+        ..["sLightDepth"] = ((ctx) => glf.injectTexture(ctx, lightFbo.texture, 16, "sLightDepth"))
         ..["lightFar"] = ((ctx) => ctx.gl.uniform1f(ctx.getUniformLocation('lightFar'), light.camera.far))
         ..["lightNear"] = ((ctx) => ctx.gl.uniform1f(ctx.getUniformLocation('lightNear'), light.camera.near))
         ..["lightConeAngle"] = ((ctx) => ctx.gl.uniform1f(ctx.getUniformLocation('lightConeAngle'), light.camera.fovRadians * radians2degrees))
@@ -328,13 +329,13 @@ class Main {
     renderer.add(r);
     renderer.addPrepare(r);
     renderer.addPrepare(lightR);
-    renderer.debugView = lightFbo.texture;
+    //renderer.debugView = lightFbo.texture;
   }
 
   _initRendererPreDeferred() {
     var fboN = _initRendererPreDeferred0(renderer.cameraViewport, am['shader_deferred_normals'], TexNormalsL, TexNormalsN);
     var fboV = _initRendererPreDeferred0(renderer.cameraViewport, am['shader_deferred_vertices'], TexVerticesL, TexVerticesN);
-    //renderer.debugView = fboV.texture;
+    renderer.debugView = fboN.texture;
     _initSSAO(fboN.texture, fboV.texture, am['texNormalsRandom']);
   }
 
@@ -407,6 +408,7 @@ class Factory_Filter2D {
       am.loadAndRegisterAsset('filter2d_brightness', 'filter2d', 'packages/glf/shaders/filters_2d/brightness.frag', null, null),
       am.loadAndRegisterAsset('filter2d_convolution3x3', 'filter2d', 'packages/glf/shaders/filters_2d/convolution3x3.frag', null, null),
       am.loadAndRegisterAsset('filter2d_x_waves', 'filter2d', 'packages/glf/shaders/filters_2d/x_waves.frag', null, null),
+      am.loadAndRegisterAsset('filter2d_fxaa', 'filter2d', 'packages/glf/shaders/filters_2d/fxaa.frag', null, null),
     ]).then((l) => am);
 
     /* An alternative to AssetManager would be to use :
@@ -420,6 +422,9 @@ class Factory_Filter2D {
     return am['filter2d_identity'];
   }
 
+  makeFXAA() {
+    return am['filter2d_fxaa'];
+  }
   makeBrightness({double brightness : 0.0, contrast : 1.0, gamma : 2.2}) {
     return new glf.Filter2D.copy(am['filter2d_brightness'])
     ..cfg = (ctx) {
