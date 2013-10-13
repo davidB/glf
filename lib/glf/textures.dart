@@ -77,10 +77,12 @@ storeImageToTexture(RenderingContext gl, Texture tex, ImageElement ele) {
 
 injectTexture(ProgramContext ctx, Texture texture, [int textureSlot = 0, String sfname]) {
   if (sfname == null) sfname = "_Tex${textureSlot}";
+  var uloc = ctx.getUniformLocation(sfname);
+  if (uloc == null) return;
   //Set slot 0 as the active Texture
   ctx.gl.activeTexture(TEXTURE0 + textureSlot);
   //Load in the Texture To Memory
   ctx.gl.bindTexture(TEXTURE_2D, texture);
   //Update The Texture Sampler in the fragment shader to use slot textureIdx
-  ctx.gl.uniform1i(ctx.getUniformLocation(sfname), textureSlot);
+  ctx.gl.uniform1i(uloc, textureSlot);
 }

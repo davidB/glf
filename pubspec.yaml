@@ -8,7 +8,7 @@ dependencies:
   crypto: any
   vector_math: '>=1.3.0'
 dev_dependencies:
-  asset_pack:
-    git: https://github.com/johnmccutchan/asset_pack.git
+  asset_pack: any
+#    git: https://github.com/johnmccutchan/asset_pack.git
   js: any
   unittest: any
