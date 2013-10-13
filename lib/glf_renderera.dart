@@ -114,11 +114,14 @@ class RendererA {
 
   _setViewport(viewport) {
     // remove previous viewport
-    _cameraRro.forEach((x) => _cameraRunnerOpaque.unregister(x));
+    _cameraRro.forEach((x) => _cameraRunner.unregister(x));
     _cameraFbo.dispose();
 
     // set new viewport
     _cameraViewport = viewport;
+
+    if (_cameraViewport == null) return;
+
     _cameraFbo.make(width : viewport.viewWidth, height : viewport.viewHeight);
 
     var rro0 = new glf.RequestRunOn()
