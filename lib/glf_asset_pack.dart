@@ -67,6 +67,8 @@ class ProgramContextLoader extends AssetLoader {
 
 class ProgramContextImporter extends AssetImporter {
   final wgl.RenderingContext gl;
+  final _cache = new ProgramContextCache();
+
   ProgramContextImporter(this.gl);
 
   void initialize(Asset asset) {
@@ -77,7 +79,7 @@ class ProgramContextImporter extends AssetImporter {
     if (payload is List && payload.length == 2) {
       String vertexShaderSource = payload[0];
       String fragmentShaderSource = payload[1];
-      var b = new ProgramContext(gl, vertexShaderSource, fragmentShaderSource);
+      var b = _cache.find(gl, vertexShaderSource, fragmentShaderSource);
       asset.imported = b;
       return new Future.value(b);
     }
@@ -88,7 +90,7 @@ class ProgramContextImporter extends AssetImporter {
     if (imported == null) {
       return;
     }
-    imported.delete();
+    _cache.free(imported);
   }
 }
 

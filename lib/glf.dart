@@ -74,6 +74,7 @@ class ProgramContext {
   final _uniforms = new Map<String, UniformLocation>();
   Shader _vertShader;
   Shader _fragShader;
+  var usage = 0;
 
   ProgramContext(this.gl, String vertSrc, String fragSrc) {
     _vertShader = _compileShader(gl, vertSrc, VERTEX_SHADER);
@@ -135,9 +136,17 @@ class ProgramContextCache {
     var v = _cache[key];
     if (v == null) {
       v = new ProgramContext(gl, vertSrc, fragSrc);
+      v.usage++;
       _cache[key] = v;
     }
     return v;
+  }
+
+  free(ProgramContext pc) {
+    pc.usage--;
+    if (pc.usage <= 0) {
+      pc.delete();
+    }
   }
 }
 
