@@ -27,7 +27,7 @@ const TexNormalsL = "_TexNormals";
 var textures;
 
 main(){
-  var gl0 = (query("#canvas0") as CanvasElement).getContext3d(antialias: false, premultipliedAlpha: false, alpha: false, depth: true);
+  var gl0 = (querySelector("#canvas0") as CanvasElement).getContext3d(antialias: false, premultipliedAlpha: false, alpha: false, depth: true);
   if (gl0 == null) {
     print("webgl not supported");
     return;
@@ -48,7 +48,7 @@ main(){
 AssetManager initAssetManager(gl) {
   var tracer = new AssetPackTrace();
   var stream = tracer.asStream().asBroadcastStream();
-  new ProgressControler(query("#assetload")).bind(stream);
+  new ProgressControler(querySelector("#assetload")).bind(stream);
   new EventsPrintControler().bind(stream);
 
   var b = new AssetManager(tracer);
@@ -108,18 +108,18 @@ class Main {
 
   final Tick tick = new Tick();
 
-  var _vertexUI; // = query('#vertex') as TextAreaElement;
-  var _fragmentUI; //= query('#fragment') as TextAreaElement;
-  var _selectShaderUI = query('#selectShader') as SelectElement;
-  var _selectMeshUI = query('#selectMesh') as SelectElement;
-  var _subdivisionMeshUI = query('#subdivisionMesh') as InputElement;
-  var _loadShaderUI = query('#loadShader') as ButtonElement;
-  var _applyShaderUI = query('#applyShader') as ButtonElement;
-  var _errorUI = query('#errorTxt') as PreElement;
-  var _showWireframeUI = query('#showWireframe') as CheckboxInputElement;
-  var _showNormalsUI = query('#showNormals') as CheckboxInputElement;
-  var _statsUpdateUI = query('#statsUpdate') as PreElement;
-  var _statsLoopUI = query('#statsLoop') as PreElement;
+  var _vertexUI; // = querySelector('#vertex') as TextAreaElement;
+  var _fragmentUI; //= querySelector('#fragment') as TextAreaElement;
+  var _selectShaderUI = querySelector('#selectShader') as SelectElement;
+  var _selectMeshUI = querySelector('#selectMesh') as SelectElement;
+  var _subdivisionMeshUI = querySelector('#subdivisionMesh') as InputElement;
+  var _loadShaderUI = querySelector('#loadShader') as ButtonElement;
+  var _applyShaderUI = querySelector('#applyShader') as ButtonElement;
+  var _errorUI = querySelector('#errorTxt') as PreElement;
+  var _showWireframeUI = querySelector('#showWireframe') as CheckboxInputElement;
+  var _showNormalsUI = querySelector('#showNormals') as CheckboxInputElement;
+  var _statsUpdateUI = querySelector('#statsUpdate') as PreElement;
+  var _statsLoopUI = querySelector('#statsLoop') as PreElement;
   var plane = new Plane();
   var obj3d = new Obj3D();
   var _programCtxCache = new glf.ProgramContextCache();
@@ -213,8 +213,8 @@ class Main {
 
 
   initEditors() {
-    _vertexUI = js.retain((js.context as dynamic).CodeMirror.fromTextArea(query("#vertex"), js.map({"mode" : "glsl", "lineNumbers" : true})).doc);
-    _fragmentUI = js.retain((js.context as dynamic).CodeMirror.fromTextArea(query("#fragment"), js.map({"mode" : "glsl", "lineNumbers" : true})).doc);
+    _vertexUI = ((js.context as dynamic).CodeMirror.fromTextArea(querySelector("#vertex"), js.map({"mode" : "glsl", "lineNumbers" : true})).doc);
+    _fragmentUI = ((js.context as dynamic).CodeMirror.fromTextArea(querySelector("#fragment"), js.map({"mode" : "glsl", "lineNumbers" : true})).doc);
   }
 
   bindUI() {
