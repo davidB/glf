@@ -1,3 +1,5 @@
+precision highp float;
+
 attribute vec3 _Vertex;
 attribute vec3 _Normal;
 

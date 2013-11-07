@@ -1,3 +1,5 @@
+precision mediump float;
+
 uniform mat4 _ProjectionViewMatrix;
 uniform mat4 _ModelMatrix;
 uniform mat3 _NormalMatrix;
