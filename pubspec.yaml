@@ -1,6 +1,6 @@
 name: glf
 version: 0.2.0
-author: David Bernard
+author: david bernard <david.bernard.31@gmail.com>
 description: another toolbox for webgl (used by vdrones)
 homepage: http://github.com/davidB/glf
 environment:
