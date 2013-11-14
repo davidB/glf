@@ -323,10 +323,14 @@ class FBO {
 
   get buffer => _buf;
   get texture => _tex;
+  get width => _width;
+  get height => _height;
 
   Framebuffer _buf;
   Renderbuffer _renderBuf;
   Texture _tex;
+  int _width = -1;
+  int _height = -1;
 
   FBO(this.gl);
 
@@ -360,6 +364,8 @@ class FBO {
     gl.bindTexture(TEXTURE_2D, null);
     gl.bindRenderbuffer(RENDERBUFFER, null);
     gl.bindFramebuffer(FRAMEBUFFER, null);
+    _width = width;
+    _height = height;
   }
 
   dispose() {
@@ -375,6 +381,8 @@ class FBO {
       gl.deleteFramebuffer(_buf);
       _buf = null;
     }
+    _width = -1;
+    _height = -1;
   }
 }
 _compileShader(RenderingContext gl, String src, int type) {

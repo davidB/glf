@@ -69,8 +69,6 @@ class Filter2DRunner {
   FullScreenRectangle rectangle;
 
   Filter2DRunner(gl, ViewportPlan this.plan): this.gl = gl, _fbo0 = new FBO(gl), _fbo1 = new FBO(gl) {
-    _fbo0.make(width: plan.viewWidth, height: plan.viewHeight, hasDepthBuff: false);
-    _fbo1.make(width: plan.viewWidth, height: plan.viewHeight, hasDepthBuff: false);
     rectangle = new FullScreenRectangle();
     rectangle.init(gl);
   }
@@ -79,6 +77,10 @@ class Filter2DRunner {
     if (filters.length == 0) return;
     plan.setup(gl);
     var tex0 = texInit;
+    if (plan.viewWidth != _fbo0.width || plan.viewHeight != _fbo0.height) {
+      _fbo0.make(width: plan.viewWidth, height: plan.viewHeight, hasDepthBuff: false);
+      _fbo1.make(width: plan.viewWidth, height: plan.viewHeight, hasDepthBuff: false);
+    }
     var dest = _fbo0;
     //gl.disable(BLEND);
     //gl.disable(DEPTH_TEST);
