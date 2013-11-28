@@ -73,8 +73,8 @@
     <div class="span6">
       <fieldset>
         <legend>Display</legend>
-        <label><input type="checkbox" id="showWireframe" name="showWireframe"></input> wireframes</label>
-        <label><input type="checkbox" id="showNormals" name="showNormals"></input> normals</label>
+        <label><input type="checkbox" id="showWireframe" name="showWireframe"/> wireframes</label>
+        <label><input type="checkbox" id="showNormals" name="showNormals"/> normals</label>
       </fieldset>
       <fieldset>
         <legend>Mesh w</legend>
@@ -86,7 +86,7 @@
           <option>sphereL</option>
           <option>none</option>
         </select>
-        <label for="subdivisionMesh">SubDivision (min 2)</label><input id="subdivisionMesh" name="quantity" type="number" min="2" max="255" value="20"></input>
+        <label for="subdivisionMesh">SubDivision (min 2)</label><input id="subdivisionMesh" name="quantity" type="range" min="2" max="255" value="20"/>
       </fieldset>
       <fieldset>
         <legend>Shader</legend>
@@ -111,7 +111,7 @@
     <!-- for this next line to work, your pubspec.yaml file must have a dependency on 'browser' -->
     <script src="packages/browser/dart.js"></script>
     <script src="packages/browser/interop.js"></script>
-    <script src="index.dart" type="application/dart"></script>
+    <script src="index.dart.js"></script>
     <!-- script src="index.dart.precompiled.js"></script-->
   </body>
 </html>
