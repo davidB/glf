@@ -107,7 +107,6 @@ class Tex2DImporter extends AssetImporter {
   }
 
   Future<dynamic> import(dynamic payload, Asset asset, AssetPackTrace tracer) {
-    print("imported import ${asset.imported}");
     if (payload is ImageElement) {
       // workaround because initialize doesn't seems to be call via dart2js
       if (asset.imported == null) {
