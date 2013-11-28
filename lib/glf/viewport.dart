@@ -172,15 +172,23 @@ class ViewportCamera {
   fullCanvas(CanvasElement canvas) {
     var dpr = window.devicePixelRatio;     // retina
     //var dpr = 1;
-    viewWidth = (dpr * canvas.clientWidth).round();//parseInt(canvas.style.width);
-    viewHeight = (dpr * canvas.clientHeight).round(); //parseInt(canvas.style.height);
+    var w = (dpr * canvas.clientWidth).round();//parseInt(canvas.style.width);
+    var h = (dpr * canvas.clientHeight).round(); //parseInt(canvas.style.height);
+    //HACK to avoid set to 0
+    if (w == 0 || h == 0) {
+      viewWidth = canvas.width;
+      viewHeight = canvas.height;
+    } else {
+      viewWidth = w;
+      viewHeight = h;
+      canvas.width = viewWidth;
+      canvas.height = viewHeight;
+    }
     x = 0;
     y = 0;
-    canvas.width = viewWidth;
-    canvas.height = viewHeight;
     camera
     ..left = x.toDouble()
-    ..right = x.toDouble() + viewWidth.toDouble()
+    ..right = x.toDouble() + canvas.width.toDouble()
     ..top = y.toDouble()
     ..bottom = y.toDouble() + viewHeight.toDouble()
     ..isOrthographic = false
