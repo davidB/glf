@@ -241,6 +241,9 @@ class Main {
     var sub = int.parse(_subdivisionMeshUI.value);
     var md = null;
     switch(_selectMeshUI.value) {
+      case 'none' :
+        md = null; //new glf.MeshDef();
+        break;
       case 'box24' :
         md = mdt.makeBox24Vertices(dx: 2.0, dy: 1.0, dz: 0.5, ty: 1.0);
         break;
@@ -460,7 +463,9 @@ class Obj3D {
 
   apply(renderer, ctx, onUpdate, glf.MeshDef md, showNormals) {
     _remove(renderer, onUpdate);
-    _add(renderer, ctx, onUpdate, md, showNormals);
+    if (md != null) {
+      _add(renderer, ctx, onUpdate, md, showNormals);
+    }
   }
 
   _remove(renderer, onUpdate) {
