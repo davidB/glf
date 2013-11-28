@@ -7733,7 +7733,7 @@ $is_aB:true},"+ProgramsRunner_run__closure": 0,wh:{"":"Li;i-",
 call$1:function(a){return a.call$1(this.i.Wy)},
 "+call:1:0":1,
 $isEH:true,
-$is_aB:true},"+ProgramsRunner_run_closure": 0,AS:{"":"a;Ee<-,Hi<-,dX<-,AJ<-,GM<-,pt<-,FR<-,P8<-,Pk<-,v9<-,Ox<-,Ad<-"},"+RequestRunOn": 0,Lf:{"":"a;Wy<-,XC-,t4-,xX-",
+$is_aB:true},"+ProgramsRunner_run_closure": 0,AS:{"":"a;Ee<-,Hi<-,dX<-,AJ<-,GM<-,pt<-,FR<-,P8<-,Pk<-,v9<-,Ox<-,Ad<-"},"+RequestRunOn": 0,Lf:{"":"a;Wy<-,XC-,t4-,xX-,LW-,Nw-",
 gz6:function(){return this.xX},
 "+texture":1,
 eF:function(a,b,c,d){var z,y
@@ -7759,7 +7759,9 @@ y.r5(z,36161,this.t4)
 y.Ng(z,36161,33189,d,b)
 y.Ih(z,36160,36096,36161,this.t4)}y.rj(z,3553,null)
 y.r5(z,36161,null)
-y.IW(z,36160,null)},
+y.IW(z,36160,null)
+this.LW=d
+this.Nw=b},
 "+make:0:4:hasDepthBuff:height:type:width":1,
 "*make":[1,7,8,7],
 cU:function(a,b){return this.eF(!0,a,5121,b)},
@@ -7774,7 +7776,8 @@ this.t4=null}z=this.xX
 if(z!=null){J.bl(this.Wy,z)
 this.xX=null}z=this.XC
 if(z==null){J.d2(this.Wy,z)
-this.XC=null}},
+this.XC=null}this.LW=-1
+this.Nw=-1},
 "+dispose:0:0":1},"+FBO": 0,f1:{"":"Li;a-",
 call$1:function(a){var z=J.U6(a)
 return L.wG(this.a,J.CA(z.t(a,0)),J.CA(z.t(a,1)))},
@@ -7796,38 +7799,40 @@ J.Oo(this.Wy,z)
 J.GB(this.Wy,z,2,5126,!1,0,0)
 J.NO(this.Wy,4,0,6)},
 "+injectAndDraw:1:0":1},"+FullScreenRectangle": 0,fQ:{"":"a;Wy<-,F5-,fO-,wm-,RB-,Ya-,KE-",
-bL:function(){var z,y,x,w,v,u,t,s,r,q,p,o
+bL:function(){var z,y,x,w,v,u,t,s,r,q,p,o,n
 z=this.F5
 if(z.length===0)return
 y=this.Ya
 x=this.Wy
 y.YY(x)
 w=this.fO
-v=this.wm
-for(y=y.M2.Ev,u=J.RE(x),t=this.RB,s=v,r=0;q=z.length,r<q;++r){if(r>0)w=s===v?t.xX:v.xX
-if(r===q-1)u.IW(x,36160,null)
-else{u.IW(x,36160,s.XC)
-s=s===v?t:v}if(r>=z.length)throw H.e(z,r)
-q=z[r]
-p=q.gEe()
-o=q.gy9()
-J.jO(p.gWy(),p.gAU())
-J.OV(p.gWy(),J.C6(p,"_PixelSize"),y[0],y[1])
-if(o!=null)o.call$1(p)
-L.Q0(p,w,0,null)
-this.KE.Hp(p)}u.IW(x,36160,null)},
+v=y.QU
+u=this.wm
+t=u.LW
+if(v==null?t==null:v===t){t=y.xw
+s=u.Nw
+s=t==null?s!=null:t!==s
+t=s}else t=!0
+if(t){u.fu(!1,y.xw,v)
+v=y.QU
+this.RB.fu(!1,y.xw,v)}for(y=y.M2.Ev,v=J.RE(x),r=this.RB,q=u,p=0;t=z.length,p<t;++p){if(p>0)w=q===u?r.xX:u.xX
+if(p===t-1)v.IW(x,36160,null)
+else{v.IW(x,36160,q.XC)
+q=q===u?r:u}if(p>=z.length)throw H.e(z,p)
+t=z[p]
+o=t.gEe()
+n=t.gy9()
+J.jO(o.gWy(),o.gAU())
+J.OV(o.gWy(),J.C6(o,"_PixelSize"),y[0],y[1])
+if(n!=null)n.call$1(o)
+L.Q0(o,w,0,null)
+this.KE.Hp(o)}v.IW(x,36160,null)},
 "+run:0:0":1,
-Zu:function(a,b){var z,y
-z=this.Ya
-y=z.QU
-this.wm.fu(!1,z.xw,y)
-y=z.QU
-this.RB.fu(!1,z.xw,y)
-this.KE=new L.B3("_TexCoord"+"0",null,null)
+Zu:function(a,b){this.KE=new L.B3("_TexCoord"+"0",null,null)
 this.KE.no(a)},
 static:{Tf:function(a,b){var z=P.A(null,L.ir)
 H.VM(z,[L.ir])
-z=new L.fQ(a,z,null,new L.Lf(a,null,null,null),new L.Lf(a,null,null,null),b,null)
+z=new L.fQ(a,z,null,new L.Lf(a,null,null,null,-1,-1),new L.Lf(a,null,null,null,-1,-1),b,null)
 z.Zu(a,b)
 return z},"+new Filter2DRunner:2:0":1}},"+Filter2DRunner": 0,ha:{"":"a;kH-,fS-,ML-,MY-,YB-,Gd-",
 zd:function(a,b,c,d){var z,y
@@ -8299,40 +8304,42 @@ z.Hi=this.gHi()
 z.AJ=this.gJe()
 return z},
 "+makeRequestRunOn:0:0":1,
-oX:function(a){var z,y,x,w
+oX:function(a){var z,y,x,w,v,u
 z=window.devicePixelRatio
 y=a.clientWidth
 if(typeof z!=="number")throw z.U()
 if(typeof y!=="number")throw H.s(y)
-this.QU=C.CD.yu(C.ON.UD(z*y))
+x=C.CD.yu(C.ON.UD(z*y))
 y=a.clientHeight
 if(typeof y!=="number")throw H.s(y)
-this.xw=C.CD.yu(C.ON.UD(z*y))
-this.x=0
-this.y=0
+w=C.CD.yu(C.ON.UD(z*y))
+if(x===0||w===0){this.QU=a.width
+this.xw=a.height}else{this.QU=x
+this.xw=w
 a.width=this.QU
-a.height=this.xw
+a.height=this.xw}this.x=0
+this.y=0
 y=this.kX
 y.Bb=this.x
-x=this.x
-w=this.QU
-w.toString
-if(typeof w!=="number")throw H.s(w)
-y.T8=x+w
+v=this.x
+u=a.width
+u.toString
+if(typeof u!=="number")throw H.s(u)
+y.T8=v+u
 y.G6=this.y
-w=this.y
-x=this.xw
-x.toString
-if(typeof x!=="number")throw H.s(x)
-y.OR=w+x
+u=this.y
+v=this.xw
+v.toString
+if(typeof v!=="number")throw H.s(v)
+y.OR=u+v
 y.uW=!1
-x=this.QU
-x.toString
-w=this.xw
-w.toString
-if(typeof x!=="number")throw x.V()
-if(typeof w!=="number")throw H.s(w)
-y.di=x/w
+v=this.QU
+v.toString
+u=this.xw
+u.toString
+if(typeof v!=="number")throw v.V()
+if(typeof u!=="number")throw H.s(u)
+y.di=v/u
 y.E2()},
 "+fullCanvas:1:0":1,
 Ed:function(a){var z,y
@@ -8459,9 +8466,7 @@ yq:function(a,b,c){return this.qF.call$3(a,b,c)},
 rT:function(a,b){b.d1=J.Jw(this.Wy)
 b.OW="OK"},
 "+initialize:1:0":1,
-M9:function(a,b,c,d){var z
-P.JS("imported import "+H.d(c.gFe()))
-z=J.x(b)
+M9:function(a,b,c,d){var z=J.x(b)
 if(typeof b==="object"&&b!==null&&!!z.$ispA){if(c.gFe()==null)c.sFe(J.Jw(this.Wy))
 this.yq(this.Wy,c.gFe(),b)
 return P.Ab(c.gFe(),null)}return P.Ab(c.gFe(),null)},
@@ -8667,7 +8672,7 @@ H.VM(b4,[{func:"YC",void:true,args:[L.pe,L.CT]}])
 b5=P.L5(null,null,null,J.O,{func:"PR",void:true,args:[L.CT]})
 b6=P.A(null,{func:"PR",void:true,args:[L.CT]})
 H.VM(b6,[{func:"PR",void:true,args:[L.CT]}])
-x=new L.T0(b7,new L.pe(b7,w,v,u,t,s,r,q,p,o,n,null),new L.pe(b7,m,l,k,j,i,h,g,f,e,d,null),new L.pe(b7,c,b,a,a0,a1,a2,a3,a4,a5,a6,null),new L.pe(b7,a7,a8,a9,b0,b1,b2,b3,b4,b5,b6,null),null,null,z,null,new L.Lf(b7,null,null,null),y,x,null,null,null)
+x=new L.T0(b7,new L.pe(b7,w,v,u,t,s,r,q,p,o,n,null),new L.pe(b7,m,l,k,j,i,h,g,f,e,d,null),new L.pe(b7,c,b,a,a0,a1,a2,a3,a4,a5,a6,null),new L.pe(b7,a7,a8,a9,b0,b1,b2,b3,b4,b5,b6,null),null,null,z,null,new L.Lf(b7,null,null,null,-1,-1),y,x,null,null,null)
 x.Hh(b7)
 return x},"+new RendererA:1:0":1}},"+RendererA": 0,QG:{"":"Li;a-",
 call$1:function(a){return this.a.G0.Fb(a)},
@@ -9008,7 +9013,9 @@ return z.ml(z,new E.wk(this))},
 "+loadShaderCode:1:0":1,
 MU:function(){var z,y
 z=H.BU(this.ad.value,null,null)
-switch(this.c1.value){case"box24":y=$.Oj().ya(2,1,0.5,1)
+switch(this.c1.value){case"none":y=null
+break
+case"box24":y=$.Oj().ya(2,1,0.5,1)
 break
 case"box24-t":y=$.Oj().zk(2,1,0.5,2,1,0.5)
 break
@@ -9032,7 +9039,7 @@ u=this.lr
 t=this.MU()
 s=J.K0(this.GF)
 v.Io(v,w,u)
-v.PU(v,w,z,u,t,s)}catch(r){w=H.Ru(r)
+if(t!=null)v.PU(v,w,z,u,t,s)}catch(r){w=H.Ru(r)
 y=w
 x=new H.XO(r,null)
 this.DN.textContent=J.AG(y)
@@ -9094,7 +9101,7 @@ t.bM.PJ(2,2,4)
 t.WN.PJ(0,0,0)
 t.mJ(this.bC,0.1,0.1)
 t=this.Vy
-r=new L.Lf(t.Wy,null,null,null)
+r=new L.Lf(t.Wy,null,null,null,-1,-1)
 u=s.QU
 r.cU(s.xw,u)
 q=this.Ms.Ix.y4("shader_depth_light")
@@ -9130,7 +9137,7 @@ this.tZ(x.xX,w.xX,y.Ix.y4("texNormalsRandom"))},
 "+_initRendererPreDeferred:0:0":1,
 IR:function(a,b,c){var z,y,x,w,v
 z=this.Vy
-y=new L.Lf(z.Wy,null,null,null)
+y=new L.Lf(z.Wy,null,null,null,-1,-1)
 x=a.QU
 y.Da(a.xw,5126,x)
 w=new L.AS(null,null,null,null,null,null,null,null,null,null,null,null)
