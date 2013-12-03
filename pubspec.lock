@@ -13,6 +13,18 @@ packages:
     description: crypto
     source: hosted
     version: "0.9.0"
+  dartemis_toolbox:
+    description:
+      path: "/home/dwayne/work/dart/glf/../dartemis_toolbox"
+      relative: true
+    source: path
+    version: "0.5.0-dev"
+  html_toolbox:
+    description:
+      path: "/home/dwayne/work/dart/glf/../html_toolbox"
+      relative: true
+    source: path
+    version: "0.1.0"
   js:
     description: js
     source: hosted

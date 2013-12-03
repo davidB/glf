@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <title>RendererR demo - glf</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="//netdna.bootstrapcdn.com/bootswatch/2.3.1/simplex/bootstrap.min.css" rel="stylesheet">
+  </head>
+ 
+  <body>   
+    <div class="container-fluid">
+    <div class="row-fluid">
+    <div class="span6">
+      <h1>RendererR demo <sub>(for testing <a href="https://github.com/davidB/glfd">glf</a>)</sub></h1>
+      <canvas id="canvas0" style="border: 1px solid red; width:100%; height:400px; padding:0; margin:0">
+        Your Browser Doesn't Support HTML5's Canvas.
+      </canvas>
+      <progress id="assetload" max="100" value="0">
+        <!--span id="progressFallback" data-bind="text : (progressCurrent() * 100 / progressMax()) + '%'"></span-->
+      </progress>
+      <br>
+      <button id="applyShader" class="btn" style="width:100%">Apply Changes</button>
+      <br>
+      <label>Duration (ms) of update function:</label>
+      <pre id="statsUpdate"></pre>
+      <br>
+      <label>Duration (ms) of main loop:</label>
+      <pre id="statsLoop"></pre>
+      <br>
+      <label>Log</label>
+      <pre id="errorTxt"></pre>
+    </div>
+  </div>
+  </div>
+    <script type="application/dart" src="rendererr_demo.dart"></script>
+    <!-- for this next line to work, your pubspec.yaml file must have a dependency on 'browser' -->
+    <script src="packages/browser/dart.js"></script>
+  </body>
+</html>

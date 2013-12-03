@@ -8,7 +8,11 @@ environment:
 dependencies:
   crypto: '>=0.9.0 <0.10.0'
   vector_math: '>=1.3.5'
+  html_toolbox:
+    path: ../html_toolbox
 dev_dependencies:
   asset_pack: '>=0.6.2'
+  dartemis_toolbox:
+    path: ../dartemis_toolbox
   js: '>=0.2.0 <0.3.0'
   unittest: '>=0.8.10+3 <0.9.0'
