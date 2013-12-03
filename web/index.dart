@@ -17,8 +17,10 @@ import 'package:vector_math/vector_math.dart';
 
 import 'package:asset_pack/asset_pack.dart';
 import 'package:glf/glf.dart' as glf;
-import 'package:glf/glf_asset_pack.dart';
+
 import 'package:glf/glf_renderera.dart';
+
+import 'utils.dart';
 
 const TexNormalsRandomL = "_TexNormalsRandom";
 const TexVerticesL = "_TexVertices";
@@ -43,59 +45,6 @@ main(){
   var am = initAssetManager(gl);
   new Main(new RendererA(gl), am).start();
   textures = new glf.TextureUnitCache(gl);
-}
-
-AssetManager initAssetManager(gl) {
-  var tracer = new AssetPackTrace();
-  var stream = tracer.asStream().asBroadcastStream();
-  new ProgressControler(querySelector("#assetload")).bind(stream);
-  new EventsPrintControler().bind(stream);
-
-  var b = new AssetManager(tracer);
-  b.loaders['img'] = new ImageLoader();
-  b.importers['img'] = new NoopImporter();
-  registerGlfWithAssetManager(gl, b);
-  return b;
-}
-
-class EventsPrintControler {
-
-  EventsPrintControler();
-
-  StreamSubscription bind(Stream<AssetPackTraceEvent> tracer) {
-    return tracer.listen(onEvent);
-  }
-
-  void onEvent(AssetPackTraceEvent event) {
-    print("AssetPackTraceEvent : ${event}");
-  }
-}
-
-class Tick {
-  double _t = -1.0;
-  double _tr = 0.0;
-  double _dt  = 0.0;
-  bool _started = false;
-  get dt => _dt;
-  get time => _t;
-  get tr => _tr;
-
-  update(ntr) {
-    if (_started) {
-      _dt = (ntr - _tr);
-      _t = _t + _dt;
-    } else {
-      _started = true;
-    }
-    _tr = ntr;
-  }
-
-  reset() {
-    _started = false;
-    _t = 0.0;
-    _tr = 0.0;
-    _dt  = 0.0;
-  }
 }
 
 var mdt = new glf.MeshDefTools();
@@ -340,7 +289,7 @@ class Main {
     var fboN = _initRendererPreDeferred0(renderer.cameraViewport, am['shader_deferred_normals'], TexNormalsL);
     var fboV = _initRendererPreDeferred0(renderer.cameraViewport, am['shader_deferred_vertices'], TexVerticesL);
     //renderer.debugView = fboN.texture;
-    _initSSAO(fboN.texture, fboV.texture, am['texNormalsRandom']);
+    //_initSSAO(fboN.texture, fboV.texture, am['texNormalsRandom']);
   }
 
   _initRendererPreDeferred0(vp, ctx, texName) {
@@ -502,8 +451,8 @@ class Obj3D {
         textures.inject(ctx, tex, '_Tex0');
         textures.inject(ctx, texNormal, '_NormalMap0');
         textures.inject(ctx, texDissolve0, '_DissolveMap0');
-        textures.inject(ctx, texDissolve1, '_DissolveMap0');
-        textures.inject(ctx, texDissolve2, '_DissolveMap0');
+        textures.inject(ctx, texDissolve1, '_DissolveMap1');
+        textures.inject(ctx, texDissolve2, '_DissolveMap2');
         textures.inject(ctx, texMatCap0, '_MatCap0');
         textures.inject(ctx, texMatCap1, '_MatCap1');
         textures.inject(ctx, texMatCap2, '_MatCap2');
@@ -566,11 +515,29 @@ class Plane {
   _add(renderer, ctx) {
     geometry.meshDef = mdt.makePlane(dx: 3.0, dy: 3.0);
     glf.makeNormalMatrix(geometry.transforms, geometry.normalMatrix);
+    // keep ref to RequestRunOn to be able to register/unregister (show/hide)
+    var tex = glf.createTexture(ctx.gl, new Uint8List.fromList([120, 120, 120, 255]), Uri.parse("_images/dirt.jpg"));
+    var texNormal = glf.createTexture(ctx.gl, new Uint8List.fromList([0, 0, 120]), Uri.parse("_images/shaders_offest_normalmap.jpg"));
+    var texDissolve0 = glf.createTexture(ctx.gl, new Uint8List.fromList([120, 120, 120, 255]), Uri.parse("_images/burnMap.png"));
+    var texDissolve1 = glf.createTexture(ctx.gl, new Uint8List.fromList([120, 120, 120, 255]), Uri.parse("_images/growMap.png"));
+    var texDissolve2 = glf.createTexture(ctx.gl, new Uint8List.fromList([120, 120, 120, 255]), Uri.parse("_images/linear.png"));
+    var texMatCap0 = glf.createTexture(ctx.gl, new Uint8List.fromList([120, 120, 120, 255]), Uri.parse("_images/matcap/matcap0.png"));
+    var texMatCap1 = glf.createTexture(ctx.gl, new Uint8List.fromList([120, 120, 120, 255]), Uri.parse("_images/matcap/matcap1.png"));
+    var texMatCap2 = glf.createTexture(ctx.gl, new Uint8List.fromList([120, 120, 120, 255]), Uri.parse("_images/matcap/matcap2.jpg"));
+
     var material = new Material()
-    ..transparent = true
     ..ctx = ctx
     ..cfg = (ctx) {
+      // material (fake variation)
       ctx.gl.uniform4f(ctx.getUniformLocation(glf.SFNAME_COLORS), 0.0, 0.5, 0.5, 1.0);
+      textures.inject(ctx, tex, '_Tex0');
+      textures.inject(ctx, texNormal, '_NormalMap0');
+      textures.inject(ctx, texDissolve0, '_DissolveMap0');
+      textures.inject(ctx, texDissolve1, '_DissolveMap1');
+      textures.inject(ctx, texDissolve2, '_DissolveMap2');
+      textures.inject(ctx, texMatCap0, '_MatCap0');
+      textures.inject(ctx, texMatCap1, '_MatCap1');
+      textures.inject(ctx, texMatCap2, '_MatCap2');
     }
     ;
     renderer.addSolid(geometry, material);
