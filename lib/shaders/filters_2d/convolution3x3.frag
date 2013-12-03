@@ -3,7 +3,7 @@ precision mediump float;
 
 uniform sampler2D _Tex0;
 varying vec2 vTexCoord0;
-uniform vec2 _PixelSize; // (1.0/width, 1.0/height)
+uniform vec3 _PixelSize; // (1.0/width, 1.0/height, width/height)
 uniform float _Kernel[9];
 
 vec3 convolution(sampler2D image, vec2 uv, vec2 onePixel, float kernel[9]) {
@@ -37,7 +37,7 @@ vec3 convolution(sampler2D image, vec2 uv, vec2 onePixel, float kernel[9]) {
 }
 
 void main(void) {
-  gl_FragColor.rgb = convolution(_Tex0, vTexCoord0, _PixelSize, _Kernel);
+  gl_FragColor.rgb = convolution(_Tex0, vTexCoord0, _PixelSize.xy, _Kernel);
   //gl_FragColor.r =_PixelSize.y * 100.0; 
   gl_FragColor.a = 1.0;
 }

@@ -127,6 +127,11 @@ class ViewportCamera {
   var sfname_viewmatrix = SFNAME_VIEWMATRIX;
   var sfname_rotmatrix = SFNAME_ROTATIONMATRIX;
   var sfname_projectionviewmatrix = SFNAME_PROJECTIONVIEWMATRIX;
+  var sfname_near = SFNAME_NEAR;
+  var sfname_far = SFNAME_FAR;
+  var sfname_viewposition = SFNAME_VIEWPOSITION;
+  var sfname_viewup = SFNAME_VIEWUP;
+  var sfname_focusposition = SFNAME_FOCUSPOSITION;
 
   final camera = new CameraInfo();
 
@@ -159,8 +164,11 @@ class ViewportCamera {
     injectMatrix4(ctx, camera.viewMatrix, sfname_viewmatrix);
     injectMatrix3(ctx, camera.rotMatrix, sfname_rotmatrix);
     injectMatrix4(ctx, camera.projectionViewMatrix, sfname_projectionviewmatrix);
-    ctx.gl.uniform1f(ctx.getUniformLocation("_Near"), camera.near);
-    ctx.gl.uniform1f(ctx.getUniformLocation("_Far"), camera.far);
+    ctx.gl.uniform1f(ctx.getUniformLocation(sfname_near), camera.near);
+    ctx.gl.uniform1f(ctx.getUniformLocation(sfname_far), camera.far);
+    ctx.gl.uniform3fv(ctx.getUniformLocation(sfname_viewposition), camera.position.storage);
+    ctx.gl.uniform3fv(ctx.getUniformLocation(sfname_viewup), camera.upDirection.storage);
+    ctx.gl.uniform3fv(ctx.getUniformLocation(sfname_focusposition), camera.focusPosition.storage);
   }
 
   makeRequestRunOn() => new RequestRunOn()
@@ -211,7 +219,7 @@ class ViewportPlan {
   int viewWidth;
   int viewHeight;
   ///DO NOT MODIFIED directly, direct access is provided to avoid copy for read
-  Vector2 pixelSize = new Vector2.zero();
+  Vector3 pixelSize = new Vector3.zero();
 
   // default constructor;
   ViewportPlan();
@@ -229,10 +237,11 @@ class ViewportPlan {
     gl.viewport(x, y, viewWidth, viewHeight);
     pixelSize.x = 1.0 / viewWidth.toDouble();
     pixelSize.y = 1.0 / viewHeight.toDouble();
+    pixelSize.z = viewWidth.toDouble() / viewHeight.toDouble();
   }
 
   injectUniforms(ProgramContext ctx) {
-    ctx.gl.uniform2f(ctx.getUniformLocation(SFNAME_PIXELSIZE), pixelSize.x, pixelSize.y);
+    ctx.gl.uniform3fv(ctx.getUniformLocation(SFNAME_PIXELSIZE), pixelSize.storage);
     //print("$pixelSize");
     //ctx.gl.uniform1fv(ctx.getUniformLocation(SFNAME_PIXELSIZE), pixelSize.storage);
   }

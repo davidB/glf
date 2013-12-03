@@ -8,18 +8,19 @@ precision highp float;
 
 uniform sampler2D _Tex0;
 varying vec2 vTexCoord0;
-uniform vec2 _PixelSize; // (1.0/width, 1.0/height)
+uniform vec3 _PixelSize; // (1.0/width, 1.0/height, width/height)
 #define FXAA_REDUCE_MIN     (1.0/128.0)
 #define FXAA_REDUCE_MUL     (1.0/8.0)
 #define FXAA_SPAN_MAX   8.0
   
 void main(){
   vec2 xy = gl_FragCoord.xy;//gl_FragCoord.xy;vTexCoord0
-  vec3 rgbNW = texture2D(_Tex0, (xy + vec2(-1.0,-1.0)) * _PixelSize).xyz;
-  vec3 rgbNE = texture2D(_Tex0, (xy + vec2(1.0,-1.0)) * _PixelSize).xyz;
-  vec3 rgbSW = texture2D(_Tex0, (xy + vec2(-1.0,1.0)) * _PixelSize).xyz;
-  vec3 rgbSE = texture2D(_Tex0, (xy + vec2(1.0,1.0)) * _PixelSize).xyz;
-  vec4 rgbaM = texture2D(_Tex0, xy  * _PixelSize );
+  vec2 psxy = _PixelSize.xy;
+  vec3 rgbNW = texture2D(_Tex0, (xy + vec2(-1.0,-1.0)) * psxy).xyz;
+  vec3 rgbNE = texture2D(_Tex0, (xy + vec2(1.0,-1.0)) * psxy).xyz;
+  vec3 rgbSW = texture2D(_Tex0, (xy + vec2(-1.0,1.0)) * psxy).xyz;
+  vec3 rgbSE = texture2D(_Tex0, (xy + vec2(1.0,1.0)) * psxy).xyz;
+  vec4 rgbaM = texture2D(_Tex0, xy  * psxy );
   vec3 rgbM  = rgbaM.xyz;
   float opacity  = rgbaM.w;
   
@@ -43,15 +44,15 @@ void main(){
   float rcpDirMin = 1.0/(min(abs(dir.x), abs(dir.y)) + dirReduce);
   dir = min(vec2( FXAA_SPAN_MAX,   FXAA_SPAN_MAX),
   max(vec2(-FXAA_SPAN_MAX, -FXAA_SPAN_MAX),
-  dir * rcpDirMin)) * _PixelSize;
+  dir * rcpDirMin)) * psxy;
         
   vec3 rgbA = 0.5 * (
-    texture2D(_Tex0,     xy   * _PixelSize + dir * (1.0/3.0 - 0.5)).xyz +
-    texture2D(_Tex0,     xy   * _PixelSize + dir * (2.0/3.0 - 0.5)).xyz);
+    texture2D(_Tex0,     xy   * psxy + dir * (1.0/3.0 - 0.5)).xyz +
+    texture2D(_Tex0,     xy   * psxy + dir * (2.0/3.0 - 0.5)).xyz);
     
   vec3 rgbB = rgbA * 0.5 + 0.25 * (
-  texture2D(_Tex0,   xy   * _PixelSize + dir *   - 0.5).xyz +
-    texture2D(_Tex0,   xy   * _PixelSize + dir * 0.5).xyz);
+  texture2D(_Tex0,   xy   * psxy + dir *   - 0.5).xyz +
+    texture2D(_Tex0,   xy   * psxy + dir * 0.5).xyz);
   float lumaB = dot(rgbB, luma);
   gl_FragColor.rgb = ((lumaB < lumaMin) || (lumaB > lumaMax)) ? rgbA : rgbB;
   gl_FragColor.a = opacity;

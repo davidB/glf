@@ -1,6 +1,6 @@
 precision highp float;
  
-uniform vec2 _PixelSize; // (1.0/width, 1.0/height)
+uniform vec3 _PixelSize; // (1.0/width, 1.0/height)
 uniform sampler2D _Tex0; // Rendered scene texture
 varying vec2 vTexCoord0;
 
@@ -81,12 +81,13 @@ float ambientOcclusion(vec2 uv, vec3 srcPosition, vec3 srcNormal, float srcDepth
 	// sample from more pixels, but it comes at the cost of performance.
 	float occlusion = 0.0;
 	
+	vec2 psxy = _PixelSize.xy;
 	for (int i = 0; i < 4; ++i){
 		vec2 k1 = reflect(kernel[i], randVec);
 		vec2 k2 = vec2(k1.x * Sin45 - k1.y * Sin45,
 					   k1.x * Sin45 + k1.y * Sin45);
-		k1 *= _PixelSize;
-		k2 *= _PixelSize;
+		k1 *= psxy;
+		k2 *= psxy;
 		
 		occlusion += samplePixels(srcPosition, srcNormal, uv + k1 * kernelRadius);
 		occlusion += samplePixels(srcPosition, srcNormal, uv + k2 * kernelRadius * 0.75);

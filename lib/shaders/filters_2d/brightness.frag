@@ -9,7 +9,6 @@ uniform float _Contrast; // 1 is the centre. < 1 = lower contrast, > 1 is raise 
 uniform float _InvGamma; // Inverse gamma correction applied to the pixel
 uniform sampler2D _Tex0; // Colour texture to modify
 varying vec2 vTexCoord0;
-//uniform vec2 _PixelSize; // (1.0/width, 1.0/height)
 
 void main () {
   vec4 color = texture2D(_Tex0, vTexCoord0);

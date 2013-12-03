@@ -35,6 +35,12 @@ const SFNAME_ROTATIONMATRIX = "_RotMatrix";
 const SFNAME_PROJECTIONMATRIX = "_ProjectionMatrix";
 const SFNAME_PROJECTIONVIEWMATRIX = "_ProjectionViewMatrix";
 const SFNAME_PIXELSIZE = "_PixelSize";
+const SFNAME_NEAR = "_Near";
+const SFNAME_FAR = "_Far";
+const SFNAME_VIEWPOSITION = "_ViewPosition";
+const SFNAME_VIEWUP = "_ViewUp";
+const SFNAME_FOCUSPOSITION = "_FocusPosition";
+
 
 /// A class to wrappe a WebGL RenderingContext and print every call
 /// To use for debug only, eg:
