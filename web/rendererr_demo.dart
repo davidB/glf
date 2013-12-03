@@ -207,7 +207,16 @@ class Main {
     };
     window.animationFrame.then(update);
 
-
+    document.onKeyDown.listen((e){
+      if (e.keyCode == KeyCode.Z) camera.position.sub(camera.viewMatrix.forward);
+      if (e.keyCode == KeyCode.S) camera.position.add(camera.viewMatrix.forward);
+      if (e.keyCode == KeyCode.D) camera.position.sub(camera.viewMatrix.right);
+      if (e.keyCode == KeyCode.Q) camera.position.add(camera.viewMatrix.right);
+      if (e.keyCode == KeyCode.R) camera.position.sub(camera.viewMatrix.up);
+      if (e.keyCode == KeyCode.F) camera.position.add(camera.viewMatrix.up);
+      if (e.keyCode == KeyCode.NUM_ZERO) camera.position.setValues(0.0, 0.0, 10.0);
+      //camera.updateViewMatrix();
+    });
   }
 }
 
