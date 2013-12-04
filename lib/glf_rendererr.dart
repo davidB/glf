@@ -107,10 +107,9 @@ float sd_torus( vec3 p, vec2 t ) {
 // Domain operations
 
 // rotation/translation
-vec3 opTx( vec3 p, mat4 m)
-{
-    vec4 q = m * vec4(p, 1.0); //invert(m) * p
-    return q.xyz;
+vec3 opTx( vec3 p, mat4 m) {
+    return (m * vec4(p, 1.0)).xyz;
+    //return (inverse(m) * vec4(p, 1.0)).xyz;
 }
 //------------------------------------------------------------------------------
 // Objects definitions (distance functions)
@@ -183,11 +182,12 @@ vec3 skyLight(vec3 normal){
   return vec3(smoothstep(0.0, PI, PI-acos(normal.y)))*0.4;
 }
 
-const vec3 lightPosition = vec3(-2.0,3.0,6.0);
- 
+\${nearLight}
+
 color shade0(color c, vec3 normal, obj o, vec3 p) {
     
     //spotlight
+    vec3 lightPosition = nearLight(p);
     vec3 lightSegment = lightPosition - p;
     vec3 lightDir = normalize(lightSegment);
     float lightIntensity = dot(normal, lightDir);
@@ -279,6 +279,28 @@ void main(void) {
 }
 ''';
 
+const nearLight0 = '''
+vec3 nearLight(vec3 p) {
+  return vec3(0.0, 0.0, 0.0);
+}
+''';
+
+nearLight_SpotAt(Vector3 v) {
+  return'''
+vec3 nearLight(vec3 p) {
+  return vec3(${v.x}, ${v.y}, ${v.z});
+}
+''';
+}
+
+nearLight_SpotGrid(size) {
+  var invsize = 1.0 / size;
+  return'''
+vec3 nearLight(vec3 p) {
+  return (floor(p * $invsize) * $size);
+}
+''';
+}
 
 class ObjectInfo {
   /// code used to inject uniform declaration into the shader
@@ -298,10 +320,11 @@ class ObjectInfo {
   glf.RunOnProgramContext at;
 }
 
-makeShader(List<ObjectInfo> os, {String tmpl: rayMarchingFrag0, stepmax:256, epsilon_de: 0.005}) {
+makeShader(List<ObjectInfo> os, {String tmpl: rayMarchingFrag0, stepmax:256, epsilon_de: 0.005, nearLight : nearLight0}) {
   var kv = {
    'stepmax' : stepmax,
-   'epsilon_de': epsilon_de
+   'epsilon_de': epsilon_de,
+   'nearLight' : nearLight
   };
 
   var mats = [];
@@ -345,6 +368,10 @@ class RendererR {
   glf.Filter2DRunner _post2d;
   List<glf.Filter2D>  get filters2d => _post2d.filters;
   glf.CameraInfo camera;
+  var nearLight = nearLight0;
+  var tmpl = rayMarchingFrag0;
+  var stepmax = 256;
+  var epsilon_de = 0.005;
 
   final _os = new List<ObjectInfo>();
   var _needShaderUpdate = true;
@@ -367,7 +394,7 @@ class RendererR {
   }
 
   _updateShader() {
-    var frag = makeShader(_os);
+    var frag = makeShader(_os, tmpl:tmpl, stepmax: stepmax, epsilon_de:epsilon_de, nearLight: nearLight);
     _post2d.filters[0] = new glf.Filter2D(gl, frag, (ctx){
       ctx.gl.uniform1f(ctx.getUniformLocation(glf.SFNAME_NEAR), camera.near);
       ctx.gl.uniform1f(ctx.getUniformLocation(glf.SFNAME_FAR), camera.far);
@@ -376,6 +403,7 @@ class RendererR {
       ctx.gl.uniform3fv(ctx.getUniformLocation(glf.SFNAME_FOCUSPOSITION), camera.focusPosition.storage);
       _os.forEach((x){if (x.at != null) { x.at(ctx); }});
     });
+    print("_updateShader");
     _needShaderUpdate = false;
   }
 
