@@ -61,7 +61,7 @@ class Main {
     });
     runner.camera = makeCamera();
     runner.register(makeFloor());
-    runner.register(makeVDrone());
+    runner.register(makeVDrone(new Vector3(1.0, 2.0, 0.0)));
     runner.register(makeCube());
     for(var i = 0; i < 10; i++){
       runner.register(makeWall(i+1.0, i+2.0, 2.0, 0.5));
@@ -100,11 +100,11 @@ makeCamera(){
   return camera;
 }
 
-makeVDrone(){
-  var a1 = new Vector3(2.0, 0.0, 1.0);
-  var a2 = new Vector3(-1.0,-1.0, 1.0);
-  var a3 = new Vector3(-1.0, 1.0, 1.0);
-  var a4 = new Vector3(0.0, 0.0, 1.5);
+makeVDrone(Vector3 t){
+  var a1 = new Vector3(2.0, 0.0, 1.0).add(t);
+  var a2 = new Vector3(-1.0,-1.0, 1.0).add(t);
+  var a3 = new Vector3(-1.0, 1.0, 1.0).add(t);
+  var a4 = new Vector3(0.0, 0.0, 1.5).add(t);
   return new r.ObjectInfo()
   ..uniforms = """
   uniform vec3 a1, a2, a3, a4;
