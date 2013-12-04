@@ -78,25 +78,25 @@ class ProgramContext {
 
   final _attributes = new Map<String, int>();
   final _uniforms = new Map<String, UniformLocation>();
-  Shader _vertShader;
-  Shader _fragShader;
   var usage = 0;
 
   ProgramContext(this.gl, String vertSrc, String fragSrc) {
+    Shader vertShader = null;
+    Shader fragShader = null;
     try {
-      _vertShader = _compileShader(gl, vertSrc, VERTEX_SHADER);
-      _fragShader = _compileShader(gl, fragSrc, FRAGMENT_SHADER);
-      program = _linkProgram(gl, _vertShader, _fragShader);
+      vertShader = _compileShader(gl, vertSrc, VERTEX_SHADER);
+      fragShader = _compileShader(gl, fragSrc, FRAGMENT_SHADER);
+      program = _linkProgram(gl, vertShader, fragShader);
     } finally {
-      if (_fragShader != null) {
-        gl.detachShader(program, _fragShader);
-        gl.deleteShader(_fragShader);
-        _fragShader = null;
+      if (fragShader != null) {
+        if (program != null) gl.detachShader(program, fragShader);
+        gl.deleteShader(fragShader);
+        fragShader = null;
       }
-      if (_vertShader != null) {
-        gl.detachShader(program, _vertShader);
-        gl.deleteShader(_vertShader);
-        _vertShader = null;
+      if (vertShader != null) {
+        if (program != null) gl.detachShader(program, vertShader);
+        gl.deleteShader(vertShader);
+        vertShader = null;
       }
     }
   }
