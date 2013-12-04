@@ -312,6 +312,7 @@ class ObjectInfo {
   String de;
   /// code of the signed distance of the object (shape)
   String sd;
+  List<String> sds;
   /// shade fragment to insert into the shade
   String sh;
   /// code of the material of the object
@@ -351,6 +352,9 @@ makeShader(List<ObjectInfo> os, {String tmpl: rayMarchingFrag0, stepmax:256, eps
     if (o.sd != null && sds.indexOf(o.sd) < 0) {
       sds.add(o.sd);
     }
+    if (o.sds != null && o.sds.isNotEmpty) {
+      sds.addAll(o.sds);
+    }
     if (o.de != null) {
       des.add("obj_union(o, " + o.de +"," + matId.toString() +".0);");
     }
@@ -372,6 +376,7 @@ class RendererR {
   var tmpl = rayMarchingFrag0;
   var stepmax = 256;
   var epsilon_de = 0.005;
+  var debugPrintFragShader = false;
 
   final _os = new List<ObjectInfo>();
   var _needShaderUpdate = true;
@@ -395,6 +400,10 @@ class RendererR {
 
   _updateShader() {
     var frag = makeShader(_os, tmpl:tmpl, stepmax: stepmax, epsilon_de:epsilon_de, nearLight: nearLight);
+    if (debugPrintFragShader) {
+      print("_updateShader");
+      print(frag);
+    }
     _post2d.filters[0] = new glf.Filter2D(gl, frag, (ctx){
       ctx.gl.uniform1f(ctx.getUniformLocation(glf.SFNAME_NEAR), camera.near);
       ctx.gl.uniform1f(ctx.getUniformLocation(glf.SFNAME_FAR), camera.far);
@@ -403,7 +412,6 @@ class RendererR {
       ctx.gl.uniform3fv(ctx.getUniformLocation(glf.SFNAME_FOCUSPOSITION), camera.focusPosition.storage);
       _os.forEach((x){if (x.at != null) { x.at(ctx); }});
     });
-    print("_updateShader");
     _needShaderUpdate = false;
   }
 
