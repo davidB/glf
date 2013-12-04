@@ -282,18 +282,20 @@ void main(void) {
 
 class ObjectInfo {
   /// code used to inject uniform declaration into the shader
-  String uniforms = '';
+  String uniforms;
   /// distance estimator fragment to insert into the distance estimator
   /// function as second arg of obj_union to define the distance of the object
   /// it is the place that should call function define in sd
   /// + some op (opScale, opTx) with the right args
-  String de = '';
+  String de;
   /// code of the signed distance of the object (shape)
-  String sd = '';
+  String sd;
   /// shade fragment to insert into the shade
-  String sh = '';
+  String sh;
   /// code of the material of the object
-  String mat = '';
+  String mat;
+  /// update to run at each frame rendering, eg to update uniforms
+  glf.RunOnProgramContext at;
 }
 
 makeShader(List<ObjectInfo> os, {String tmpl: rayMarchingFrag0, stepmax:256, epsilon_de: 0.005}) {
@@ -309,11 +311,11 @@ makeShader(List<ObjectInfo> os, {String tmpl: rayMarchingFrag0, stepmax:256, eps
   var des = [];
   // merge objInfo definitions
   os.forEach((o) {
-    if (mats.indexOf(o.mat) < 0) {
+    if (o.mat != null && mats.indexOf(o.mat) < 0) {
       mats.add(o.mat);
     }
     var matId = shs.indexOf(o.sh) + 1;
-    if (sh0s.indexOf(o.sh) < 1) {
+    if (o.sh != null && sh0s.indexOf(o.sh) < 1) {
       matId = sh0s.length + 1;
       var str = '';
       if (matId > 1) {
@@ -323,12 +325,14 @@ makeShader(List<ObjectInfo> os, {String tmpl: rayMarchingFrag0, stepmax:256, eps
       sh0s.add(o.sh);
       shs.add(str);
     }
-    if (sds.indexOf(o.sd) < 0) {
+    if (o.sd != null && sds.indexOf(o.sd) < 0) {
       sds.add(o.sd);
     }
-    des.add("obj_union(o, " + o.de +"," + matId.toString() +".0);");
+    if (o.de != null) {
+      des.add("obj_union(o, " + o.de +"," + matId.toString() +".0);");
+    }
   });
-  kv['obj_uniforms'] = os.fold('', (acc, x) => acc + x.uniforms + '\n');
+  kv['obj_uniforms'] = os.fold('', (acc, x) => (x.uniforms == null)? acc : (acc + x.uniforms + '\n'));
   kv['obj_sds'] = sds.fold('', (acc, x) => acc + x + '\n');
   kv['obj_des'] = des.fold('', (acc, x) => acc + x + '\n');
   kv['obj_shs'] = shs.fold('', (acc, x) => acc + x + '\n');
@@ -336,6 +340,51 @@ makeShader(List<ObjectInfo> os, {String tmpl: rayMarchingFrag0, stepmax:256, eps
   return interpolate(tmpl, kv);
 }
 
+class RendererR {
+  final gl;
+  glf.Filter2DRunner _post2d;
+  List<glf.Filter2D>  get filters2d => _post2d.filters;
+  glf.CameraInfo camera;
+
+  final _os = new List<ObjectInfo>();
+  var _needShaderUpdate = true;
+
+  RendererR(gl) : this.gl = gl{
+    var view2d = new glf.ViewportPlan()..fullCanvas(gl.canvas);
+    _post2d = new glf.Filter2DRunner(gl, view2d);
+    // reserve placeholder for raymarching shader
+    _post2d.filters.add(null);
+  }
+
+  register(ObjectInfo o) {
+    _os.add(o);
+    _needShaderUpdate = true;
+  }
+
+  unregister(ObjectInfo o) {
+    _os.remove(o);
+    _needShaderUpdate = true;
+  }
+
+  _updateShader() {
+    var frag = makeShader(_os);
+    _post2d.filters[0] = new glf.Filter2D(gl, frag, (ctx){
+      ctx.gl.uniform1f(ctx.getUniformLocation(glf.SFNAME_NEAR), camera.near);
+      ctx.gl.uniform1f(ctx.getUniformLocation(glf.SFNAME_FAR), camera.far);
+      ctx.gl.uniform3fv(ctx.getUniformLocation(glf.SFNAME_VIEWPOSITION), camera.position.storage);
+      ctx.gl.uniform3fv(ctx.getUniformLocation(glf.SFNAME_VIEWUP), camera.upDirection.storage);
+      ctx.gl.uniform3fv(ctx.getUniformLocation(glf.SFNAME_FOCUSPOSITION), camera.focusPosition.storage);
+      _os.forEach((x){if (x.at != null) { x.at(ctx); }});
+    });
+    _needShaderUpdate = false;
+  }
+
+  run() {
+    if (camera == null) throw new Exception("camera undefined");
+    if (_needShaderUpdate) _updateShader();
+    _post2d.run();
+  }
+}
 // Some code for GLSL
 /*
 
