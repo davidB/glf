@@ -65,6 +65,7 @@ class Filter2DRunner {
   Texture texInit;
   final _fbo0;
   final _fbo1;
+  FBO _fboTarget = null;
   ViewportPlan plan;
   FullScreenRectangle rectangle;
 
@@ -73,15 +74,24 @@ class Filter2DRunner {
     rectangle.init(gl);
   }
 
+  Filter2DRunner.intoFBO(gl, this._fboTarget): this.gl = gl, _fbo0 = new FBO(gl), _fbo1 = new FBO(gl) {
+    plan = new ViewportPlan()
+    ..viewWidth = _fboTarget.width
+    ..viewHeight = _fboTarget.height
+    ;
+    rectangle = new FullScreenRectangle();
+    rectangle.init(gl);
+  }
+
   run() {
     if (filters.length == 0) return;
     plan.setup(gl);
-    var tex0 = texInit;
     if (plan.viewWidth != _fbo0.width || plan.viewHeight != _fbo0.height) {
       _fbo0.make(width: plan.viewWidth, height: plan.viewHeight, hasDepthBuff: false);
       _fbo1.make(width: plan.viewWidth, height: plan.viewHeight, hasDepthBuff: false);
     }
     var dest = _fbo0;
+    var tex0 = texInit;
     //gl.disable(BLEND);
     //gl.disable(DEPTH_TEST);
     for(var i = 0; i < filters.length; ++i){
@@ -89,7 +99,8 @@ class Filter2DRunner {
         tex0 = (dest == _fbo0) ? _fbo1.texture : _fbo0.texture;
       }
       if (i == filters.length - 1) {
-        gl.bindFramebuffer(FRAMEBUFFER, null);
+        var b = (_fboTarget != null) ? _fboTarget.buffer : null;
+        gl.bindFramebuffer(FRAMEBUFFER, b);
       } else {
         gl.bindFramebuffer(FRAMEBUFFER, dest.buffer);
         dest = (dest == _fbo0) ? _fbo1 : _fbo0;
@@ -105,5 +116,14 @@ class Filter2DRunner {
       rectangle.injectAndDraw(ctx);
     }
     gl.bindFramebuffer(FRAMEBUFFER, null);
+  }
+
+  dispose() {
+    _fbo0.dispose();
+    _fbo1.dispose();
+//    filters.forEach((x){
+//      x.ctx.delete();
+//    });
+    filters.clear();
   }
 }
