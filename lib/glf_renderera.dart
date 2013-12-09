@@ -3,7 +3,6 @@ library glf_renderera;
 import 'package:glf/glf.dart' as glf;
 import 'package:vector_math/vector_math.dart';
 import 'dart:web_gl' as WebGL;
-import 'dart:html';
 
 class Renderer2SolidCache {
   Geometry geometry;
@@ -33,13 +32,10 @@ class RendererA {
   final glf.ProgramsRunner _cameraRunnerOpaque; // for opaque
   final glf.ProgramsRunner _cameraRunnerTransparent; // for transparent solid
   glf.Filter2DRunner _post2d;
-  glf.Filter2DRunner _post2dw1;
   final clearColor = new Vector4(1.0, 0.0, 0.0, 1.0);
 
   List<glf.Filter2D>  get filters2d => _post2d.filters;
 
-  get debugView => _post2dw1.texInit;
-  set debugView(WebGL.Texture tex) => _post2dw1.texInit = tex;
 
   glf.ViewportCamera _cameraViewport;
   final _cameraFbo;
@@ -107,7 +103,6 @@ class RendererA {
     _x1 = gl.getExtension("OES_texture_float");
     //_x2 = gl.getExtension("GL_EXT_draw_buffers");
     _initPostW0();
-    _initPostW1();
     _initPre();
   }
 
@@ -192,18 +187,6 @@ class RendererA {
   _initPre() {
   }
 
-  _initPostW1() {
-    var view2d = new glf.ViewportPlan()
-    ..viewWidth = 256
-    ..viewHeight = 256
-    ..x = 10
-    ..y = 0
-    ;
-    _post2dw1 = new glf.Filter2DRunner(gl, view2d);
-    HttpRequest.request('packages/glf/shaders/filters_2d/identity.frag', method: 'GET').then((r) {
-      _post2dw1.filters.add(new glf.Filter2D(gl, r.responseText));
-    });
-  }
 
   _initPostW0() {
     var view2d = new glf.ViewportPlan()..fullCanvas(gl.canvas);
@@ -214,7 +197,6 @@ class RendererA {
     _preRunner.run();
     _cameraRunner.run();
     _post2d.run();
-    if (_post2dw1.texInit != null) _post2dw1.run();
   }
 
 }

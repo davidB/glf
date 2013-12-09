@@ -25,6 +25,14 @@ Texture createTexture(RenderingContext gl, Uint8List color, [Uri imageUrl, handl
   return tex;
 }
 
+Future<Texture> createTextureF(RenderingContext gl, Uri imageUrl, [handle(RenderingContext, Texture, ImageElement) = storeImageToTexture]) {
+  var tex = gl.createTexture();
+  return loadImage(imageUrl).then((img){
+    handle(gl, tex, img);
+    return tex;
+  });
+}
+
 Future<ImageElement> loadImage(Uri url) {
   var completer = new Completer<ImageElement>();
   var element = new ImageElement();
@@ -92,12 +100,12 @@ class TextureUnitCache {
   int _max;
   int _lastFind = 0; //use as a timestamp for a LRU
   Map<Texture, _TextureUnitCacheEntry> _cache;
-  
+
   TextureUnitCache(this.gl) {
     _max = math.max(32, gl.getParameter(MAX_TEXTURE_IMAGE_UNITS));
     _cache = new Map<Texture, _TextureUnitCacheEntry>();
   }
-  
+
   inject(ProgramContext ctx, Texture texture, String sfname) {
     var uloc = ctx.getUniformLocation(sfname);
     if (uloc == null){
@@ -108,7 +116,7 @@ class TextureUnitCache {
     ctx.gl.uniform1i(uloc, textureUnit);
     return textureUnit;
   }
-  
+
   _find(Texture texture) {
     _lastFind++;
     var e = _cache[texture];
@@ -131,7 +139,7 @@ class TextureUnitCache {
     //Load in the Texture To Memory
     gl.bindTexture(TEXTURE_2D, e.texture);
     e.lastFind = _lastFind;
-    return e.unit;  
+    return e.unit;
   }
 
   _findOldest() {
@@ -145,7 +153,7 @@ class TextureUnitCache {
       return acc | (1 << e.unit);
     });
     for (var i = 0; i < _max; ++i) {
-      if ((freeset & (1 << i)) == 0) return i;  
+      if ((freeset & (1 << i)) == 0) return i;
     }
     return -1;
   }
@@ -159,4 +167,59 @@ class _TextureUnitCacheEntry {
   Texture texture;
   int unit;
   int lastFind;
+}
+
+/// [RendererTexture] is a simple render used to display a texture on canvas
+/// at position [plan] {x : 10, y : 0, viewWidth : 256, viewHeight :256 }.
+/// This renderer is a very usefull tool to debug texture (display).
+/// eg:
+///
+///     var debugTexR0 = new RendererTexture(gl);
+///     ...
+///     update(t) {
+///       ...
+///       mainRenderer.run();
+///       debugTexR0.run();
+///     }
+///     ...
+///     debugTexR0.tex = myBuggyTex;
+///
+class RendererTexture {
+  final gl;
+  Texture tex;
+  final plan = new ViewportPlan()
+  ..viewWidth = 256
+  ..viewHeight = 256
+  ..x = 10
+  ..y = 0
+  ;
+  Filter2DRunner _f2dr;
+
+  RendererTexture(this.gl, {scaleR : 1.0, scaleG : 1.0, scaleB : 1.0, scaleA : 1.0}) {
+    var f2d = new Filter2D(gl, """
+      precision mediump float;
+      
+      uniform sampler2D _Tex0;
+      varying vec2 vTexCoord0;
+      
+      void main(void) {
+        vec4 c = texture2D(_Tex0, vTexCoord0);
+        gl_FragColor.r = c.r * $scaleR;
+        gl_FragColor.g = c.g * $scaleG;
+        gl_FragColor.b = c.b * $scaleB;
+        gl_FragColor.a = c.a * $scaleA; 
+      }
+      """
+    );
+    _f2dr = new Filter2DRunner(gl, plan);
+    _f2dr.filters.add(f2d);
+  }
+
+  run() {
+    if (tex != null) {
+      _f2dr.texInit = tex;
+      _f2dr.run();
+    }
+  }
+
 }

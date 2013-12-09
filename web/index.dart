@@ -27,6 +27,7 @@ const TexVerticesL = "_TexVertices";
 const TexNormalsL = "_TexNormals";
 
 var textures;
+var debugTexR0;
 
 main(){
   var gl0 = (querySelector("#canvas0") as CanvasElement).getContext3d(antialias: false, premultipliedAlpha: false, alpha: false, depth: true);
@@ -43,8 +44,9 @@ main(){
   //var hostUI = new js.Proxy(gli.host.HostUI, result);
   //result.hostUI = hostUI; // just so we can access it later for debugging
   var am = initAssetManager(gl);
-  new Main(new RendererA(gl), am).start();
+  debugTexR0 = new glf.RendererTexture(gl);
   textures = new glf.TextureUnitCache(gl);
+  new Main(new RendererA(gl), am).start();
 }
 
 var mdt = new glf.MeshDefTools();
@@ -144,6 +146,7 @@ class Main {
       onUpdate.forEach((f) => f(tick));
       // render (run shader's program)
       renderer.run();
+      debugTexR0.run();
       statsU.stop();
       statsL.stop();
       statsL.start();
@@ -282,7 +285,7 @@ class Main {
     renderer.add(r);
     renderer.addPrepare(r);
     renderer.addPrepare(lightR);
-    renderer.debugView = lightFbo.texture;
+    debugTexR0.tex = lightFbo.texture;
   }
 
   _initRendererPreDeferred() {
