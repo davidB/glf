@@ -374,6 +374,38 @@ class FBO {
     _height = height;
   }
 
+  makeP2({int powerOf2 : 1, int type : UNSIGNED_BYTE, hasDepthBuff: true, magFilter: LINEAR, minFilter:LINEAR_MIPMAP_NEAREST}) {
+    dispose();
+    var width = 1 << powerOf2; //math.pow(2, powerOf2);
+    var height = width;
+
+    _buf = gl.createFramebuffer();
+    gl.bindFramebuffer(FRAMEBUFFER, _buf);
+
+    _tex = gl.createTexture();
+    gl.bindTexture(TEXTURE_2D, _tex);
+    gl.texImage2DTyped(TEXTURE_2D, 0, RGBA, width, height, 0, RGBA, type, null);
+    gl.texParameteri(TEXTURE_2D, TEXTURE_WRAP_S, CLAMP_TO_EDGE);
+    gl.texParameteri(TEXTURE_2D, TEXTURE_WRAP_T, CLAMP_TO_EDGE);
+    gl.texParameteri(TEXTURE_2D, TEXTURE_MAG_FILTER, magFilter);
+    gl.texParameteri(TEXTURE_2D, TEXTURE_MIN_FILTER, minFilter);
+    //gl.generateMipmap(TEXTURE_2D);
+    gl.framebufferTexture2D(FRAMEBUFFER, COLOR_ATTACHMENT0, TEXTURE_2D, _tex, 0);
+
+    if (hasDepthBuff) {
+      _renderBuf = gl.createRenderbuffer();
+      gl.bindRenderbuffer(RENDERBUFFER, _renderBuf);
+      gl.renderbufferStorage(RENDERBUFFER, DEPTH_COMPONENT16, width, height);
+      gl.framebufferRenderbuffer(FRAMEBUFFER, DEPTH_ATTACHMENT, RENDERBUFFER, _renderBuf);
+    }
+
+    gl.bindTexture(TEXTURE_2D, null);
+    gl.bindRenderbuffer(RENDERBUFFER, null);
+    gl.bindFramebuffer(FRAMEBUFFER, null);
+    _width = width;
+    _height = height;
+  }
+
   dispose() {
     if (_renderBuf != null) {
       gl.deleteRenderbuffer(_renderBuf);
