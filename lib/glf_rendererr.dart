@@ -46,7 +46,8 @@ color mat_chessboardXY1(in vec3 p){
 }
 ''';
 }
-const rayMarchingFrag0 = '''
+
+const sdHeaderFrag0 = '''
 // based on
 // http://geeks3d.developpez.com/GLSL/raymarching/
 // http://9bitscience.blogspot.fr/2013/07/raymarching-distance-fields_14.html
@@ -60,8 +61,6 @@ const float PI = 3.14159265358979323846264;
 
 varying vec2 vTexCoord0;
 uniform vec3 ${glf.SFNAME_PIXELSIZE};
-uniform mat4 lightProj, lightView;
-uniform float time;
 uniform vec3 ${glf.SFNAME_VIEWPOSITION}, ${glf.SFNAME_VIEWUP}, ${glf.SFNAME_FOCUSPOSITION};
 uniform float ${glf.SFNAME_NEAR}, ${glf.SFNAME_FAR};
 
@@ -130,6 +129,35 @@ obj de(in vec3 p) {
   \${obj_des}
   return o;
 }
+''';
+
+const distanceFieldFrag0 = '''
+${sdHeaderFrag0}
+
+void main(void) {
+  float far = ${glf.SFNAME_FAR};
+  vec3 ro = ${glf.SFNAME_VIEWPOSITION};
+
+  // Configuration de la camera.
+  vec2 q = vTexCoord0.xy;
+  vec2 vPos = -1.0 + 2.0 * q;
+  //vec3 rd = vPos.x * u * ${glf.SFNAME_PIXELSIZE}.z + vPos.y * v;
+  vec3 rd = vec3(vPos.x * far * ${glf.SFNAME_PIXELSIZE}.z, vPos.y * far, 0.0);
+
+
+  vec3 p = ro + rd;
+  obj o = de(p);
+  float d = o.x;
+  //gl_FragColor.r = abs(p.y);
+  //gl_FragColor.r = clamp(o.x, 0.0, 1.0);
+  gl_FragColor.r = d;
+  gl_FragColor.a = 1.0;
+}
+''';
+
+const rayMarchingFrag0 = '''
+${sdHeaderFrag0}
+
 //------------------------------------------------------------------------------
 // Material
 
@@ -381,9 +409,16 @@ class RendererR {
   final _os = new List<ObjectInfo>();
   var _needShaderUpdate = true;
 
-  RendererR(gl) : this.gl = gl{
-    var view2d = new glf.ViewportPlan()..fullCanvas(gl.canvas);
-    _post2d = new glf.Filter2DRunner(gl, view2d);
+  get os => _os;
+  get needShaderUpdate => _needShaderUpdate;
+
+  RendererR(gl, {glf.FBO fboTarget}) : this.gl = gl{
+    if (fboTarget != null) {
+      _post2d = new glf.Filter2DRunner.intoFBO(gl, fboTarget);
+    } else {
+      var view2d = new glf.ViewportPlan()..fullCanvas(gl.canvas);
+      _post2d = new glf.Filter2DRunner(gl, view2d);
+    }
     // reserve placeholder for raymarching shader
     _post2d.filters.add(null);
   }
@@ -419,6 +454,11 @@ class RendererR {
     if (camera == null) throw new Exception("camera undefined");
     if (_needShaderUpdate) _updateShader();
     _post2d.run();
+  }
+
+  dispose() {
+    _post2d.dispose();
+    _os.clear();
   }
 }
 // Some code for GLSL

@@ -1,5 +1,6 @@
 import 'dart:html';
 import 'dart:async';
+import 'dart:web_gl' as webgl;
 
 import 'package:vector_math/vector_math.dart';
 import 'package:asset_pack/asset_pack.dart';
@@ -9,6 +10,8 @@ import 'package:dartemis_toolbox/startstopstats.dart';
 
 import 'utils.dart';
 
+var _x1;
+var debugTexR0;
 main(){
   var gl0 = (querySelector("#canvas0") as CanvasElement).getContext3d(antialias: false, premultipliedAlpha: false, alpha: false, depth: true);
   if (gl0 == null) {
@@ -16,6 +19,9 @@ main(){
     return;
   }
   var gl = gl0;
+  //_x0 = gl.getExtension("OES_standard_derivatives");
+  _x1 = gl.getExtension("OES_texture_float");
+  debugTexR0 = new glf.RendererTexture(gl);
   new Main(gl)
   ..am = initAssetManager(gl)
   ..start()
@@ -54,34 +60,41 @@ class Main {
       }
     ;
 
+    var textures = new glf.TextureUnitCache(gl);
     var viewport =  new glf.ViewportPlan.defaultSettings(gl.canvas);
     var runner = new r.RendererR(gl);
     am.loadAndRegisterAsset('filter2d_fxaa', 'filter2d', 'packages/glf/shaders/filters_2d/fxaa.frag', null, null).then((_){
       runner.filters2d.add(am['filter2d_fxaa']);
     });
-    runner.camera = makeCamera();
+    runner.camera = makeCameraRM();
+    runner.nearLight = r.nearLight_SpotAt(new Vector3(2.0, 1.0, 5.0));
     runner.register(makeFloor());
     runner.register(makeVDrone(new Vector3(1.0, 2.0, 0.0)));
     runner.register(makeCube());
-    for(var i = 0; i < 10; i++){
-      runner.register(makeWall(i+1.0, i+2.0, 2.0, 0.5));
-    }
+    runner.register(makeWallTexture(gl, textures, 1.0, 1.5, 1.0, 1.0, 3.0));
+//    for(var i = 0; i < 10; i++){
+//      runner.register(makeWall(i+1.0, i+2.0, 2.0, 0.5));
+//    }
+
     update(t){
       statsU.start();
       window.animationFrame.then(update);
       runner.run();
+      debugTexR0.run();
       statsU.stop();
       statsL.stop();
       statsL.start();
     };
     window.animationFrame.then(update);
-
+    document.onKeyDown.listen((e){
+      if (e.keyCode == KeyCode.N) window.animationFrame.then(update);
+    });
   }
 }
 
-makeCamera(){
+makeCameraRM(){
   var camera = new glf.CameraInfo()
-  ..near = 1.0
+  ..near = 0.0
   ..far = 100.0
   ..position.setValues(0.0, 0.0, 10.0)
   ..upDirection.setValues(0.0, 1.0, 0.0)
@@ -161,7 +174,56 @@ makeCube(){
 
 makeWall(x, y, w, h, [z = 2.0]){
   return new r.ObjectInfo()
-  ..de = "sd_box(p + vec3($x, $y, 0.0), vec3($w,$h,$z))"
+  ..de = "sd_box(p - vec3($x, $y, 0.0), vec3($w,$h,$z))"
   ..sh = """return shadeUniformBasic(vec4(1.0,1.0,1.0,1.0), o, p);"""
+  ;
+}
+
+makeWallTexture(gl, textures, z, zSize, offx, offy, unit){
+  offx = 5.0;
+  offy = 0.0;
+  unit = 20.0;
+  var fbo;
+  fbo = new glf.FBO(gl);
+  fbo.makeP2(powerOf2:11, hasDepthBuff: false, magFilter: webgl.NEAREST, minFilter: webgl.NEAREST); // 2048 * 2048
+  var runner = new r.RendererR(gl, fboTarget: fbo);
+  runner.camera = new glf.CameraInfo()
+  ..near = 0.0
+  ..far = unit * 0.5// the half of the width and height
+  ..position.setValues(offx, offy, z)
+  ;
+  runner.tmpl = r.distanceFieldFrag0;
+  var nb = 4;
+  var w = 1.0; //unit/ (nb * 2.0);
+  var h = 0.5; //unit/ (nb * 0.5);
+  for(var i = 0; i < nb; i++){
+    var p = 0 + i * ((i % 2) - 0.5) * 2.0;
+    runner.register(makeWall(p + 3, p + 1, w, h, z));
+  }
+  runner.run();
+  runner.dispose();
+  var tex = fbo.texture;
+  debugTexR0.tex = tex;
+
+  return new r.ObjectInfo()
+    ..uniforms='''
+    uniform sampler2D wallTex;
+    '''
+    ..sd = '''
+    float sd_tex(vec3 p, sampler2D tex, float dz, float halfz, float offx, float offy, float iu, float u) {
+      vec2 st = (vec2((p.x + offy), (p.y + offy)) * iu) * 0.5 + 0.5;
+      vec4 data = texture2D(tex, st);
+      float d = data.r;
+      float z = max(0.0, abs(p.z - dz) - halfz);
+      return sqrt(d * d + z * z);
+    }
+    '''
+    ..de = "sd_tex(p, wallTex, $z, ${zSize * 0.5}, $offx, $offy, ${1/unit}, ${unit})"
+    ..sh = """return shadeUniformBasic(vec4(1.0,1.0,1.0,1.0), o, p);"""
+    //..sh = """return vec4(1.0,0.0,0.0,1.0);"""
+    ..at = (ctx) {
+      //glf.injectTexture(ctx, tex, 1, 'wallTex');
+      textures.inject(ctx, tex, 'wallTex');
+    }
   ;
 }
