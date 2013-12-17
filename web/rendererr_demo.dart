@@ -20,7 +20,7 @@ main(){
   }
   var gl = gl0;
   //_x0 = gl.getExtension("OES_standard_derivatives");
-  _x1 = gl.getExtension("OES_texture_float");
+  //_x1 = gl.getExtension("OES_texture_float");
   debugTexR0 = new glf.RendererTexture(gl);
   new Main(gl)
   ..am = initAssetManager(gl)
@@ -123,10 +123,8 @@ makeVDrone(Vector3 t){
   uniform vec3 a1, a2, a3, a4;
   """
   ..de = "sd_tetrahedron(p, a1, a2, a3, a4)"
-  ..sd = """
-  float thalfspace(vec3 p, vec3 a1, vec3 a2, vec3 a3)
-  {
-  
+  ..sds = ["""
+float thalfspace(vec3 p, vec3 a1, vec3 a2, vec3 a3){
   vec3 c = vec3(a1);
   c = c + (a2 - c) * 0.5;
   c = c + (a3 - c) * 0.5;
@@ -135,17 +133,19 @@ makeVDrone(Vector3 t){
   vec3 n = -normalize(cross(a2 - a1, a3 - a1));
   float b = length(a1 - c);
   return max(0.0, dot(p-a1, n));
-  }
-  
-  float sd_tetrahedron(vec3 p, vec3 a1, vec3 a2, vec3 a3, vec3 a4){
+}
+""",
+"""  
+float sd_tetrahedron(vec3 p, vec3 a1, vec3 a2, vec3 a3, vec3 a4){
   float d = 0.0;
   d = max(thalfspace(p, a1, a3, a2),d);
   d = max(thalfspace(p, a1, a2, a4),d);
   d = max(thalfspace(p, a4, a2, a3),d);
   d = max(thalfspace(p, a1, a4, a3),d);
   return d;
-  }
-  """
+}
+"""
+]
   ..sh = """return shadeUniformBasic(vec4(0.5, 0.0, 0.0, 1.0), o, p);"""
   ..at = (ctx){
     ctx.gl.uniform3fv(ctx.getUniformLocation("a1"), a1.storage);
@@ -159,8 +159,8 @@ makeVDrone(Vector3 t){
 makeFloor(){
   return new r.ObjectInfo()
   ..de = "sd_flatFloor(p)"
-  ..sd = r.sd_flatFloor(1.0)
-  ..mat = r.mat_chessboardXY0(1.0, new Vector4(0.9,0.0,0.5,1.0), new Vector4(0.2,0.2,0.8,1.0))
+  ..sds = [r.sd_flatFloor(1.0)]
+  ..mats = [r.mat_chessboardXY0(1.0, new Vector4(0.9,0.0,0.5,1.0), new Vector4(0.2,0.2,0.8,1.0))]
   ..sh = """return shade0(mat_chessboardXY0(p), getNormal(o, p), o, p);"""
   ;
 }
@@ -180,50 +180,16 @@ makeWall(x, y, w, h, [z = 2.0]){
 }
 
 makeWallTexture(gl, textures, z, zSize, offx, offy, unit){
-  offx = 5.0;
-  offy = 0.0;
   unit = 20.0;
-  var fbo;
-  fbo = new glf.FBO(gl);
-  fbo.makeP2(powerOf2:11, hasDepthBuff: false, magFilter: webgl.NEAREST, minFilter: webgl.NEAREST); // 2048 * 2048
-  var runner = new r.RendererR(gl, fboTarget: fbo);
-  runner.camera = new glf.CameraInfo()
-  ..near = 0.0
-  ..far = unit * 0.5// the half of the width and height
-  ..position.setValues(offx, offy, z)
-  ;
-  runner.tmpl = r.distanceFieldFrag0;
   var nb = 4;
   var w = 1.0; //unit/ (nb * 2.0);
   var h = 0.5; //unit/ (nb * 0.5);
+  var objs = [];
   for(var i = 0; i < nb; i++){
     var p = 0 + i * ((i % 2) - 0.5) * 2.0;
-    runner.register(makeWall(p + 3, p + 1, w, h, z));
+    objs.add(makeWall(p + 3, p + 1, w, h, z));
   }
-  runner.run();
-  runner.dispose();
-  var tex = fbo.texture;
-  debugTexR0.tex = tex;
-
-  return new r.ObjectInfo()
-    ..uniforms='''
-    uniform sampler2D wallTex;
-    '''
-    ..sd = '''
-    float sd_tex(vec3 p, sampler2D tex, float dz, float halfz, float offx, float offy, float iu, float u) {
-      vec2 st = (vec2((p.x + offy), (p.y + offy)) * iu) * 0.5 + 0.5;
-      vec4 data = texture2D(tex, st);
-      float d = data.r;
-      float z = max(0.0, abs(p.z - dz) - halfz);
-      return sqrt(d * d + z * z);
-    }
-    '''
-    ..de = "sd_tex(p, wallTex, $z, ${zSize * 0.5}, $offx, $offy, ${1/unit}, ${unit})"
-    ..sh = """return shadeUniformBasic(vec4(1.0,1.0,1.0,1.0), o, p);"""
-    //..sh = """return vec4(1.0,0.0,0.0,1.0);"""
-    ..at = (ctx) {
-      //glf.injectTexture(ctx, tex, 1, 'wallTex');
-      textures.inject(ctx, tex, 'wallTex');
-    }
-  ;
+//  var tex = fbo.texture;
+//  debugTexR0.tex = tex;
+  return r.makeExtrudeZinTex(gl, textures, "wallTex", new Vector3(5.0, 0.0, z), zSize, unit, objs);
 }
