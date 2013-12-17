@@ -406,16 +406,16 @@ class FBO {
     _height = height;
   }
 
-  dispose() {
+  dispose({deleteTex : true, deleteFramebuffer : true}) {
     if (_renderBuf != null) {
       gl.deleteRenderbuffer(_renderBuf);
       _renderBuf = null;
     }
-    if (_tex != null) {
+    if (_tex != null && deleteTex) {
       gl.deleteTexture(_tex);
       _tex = null;
     }
-    if (_buf == null) {
+    if (_buf == null && deleteFramebuffer) {
       gl.deleteFramebuffer(_buf);
       _buf = null;
     }
