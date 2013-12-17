@@ -1,5 +1,6 @@
 library glf_rendererr;
 
+import 'dart:collection';
 import 'dart:web_gl' as webgl;
 import 'package:glf/glf.dart' as glf;
 import 'package:vector_math/vector_math.dart';
@@ -9,21 +10,23 @@ const rayMarchingVert0 = glf.Filter2D.VERT_SRC_2D;
 
 
 /// Pack a floating point value into a vec2 (16bpp).
+/// glsl: vec2 packHalf(float v)
 packHalf(l) {
   l.add('''
-vec2 packHalf (float v) {
-  const vec2 bias = vec2(1.0 / 255.0, 0.0);
-  vec2 rg = vec2(v, fract(v * 255.0));
+vec2 packHalf(float v) {
+  const vec2 bias = vec2(1.0 / 256.0, 0.0);
+  vec2 rg = vec2(v, fract(v * 256.0));
   return rg - (rg.gg * bias);
 }
 ''');
 }
 
 /// Unpack a vec2 to a floating point (used by VSM).
+/// glsl: float unpackHalf(vec2 rg)
 unpackHalf(l) {
   l.add('''
 float unpackHalf(vec2 rg) {
-  return rg.r + (rg.g / 255.0);
+  return rg.r + (rg.g / 256.0);
 }
 ''');
 }
@@ -50,13 +53,12 @@ float aastep (float threshold , float value) {
   // GLSL 's fwidth(value) is abs(dFdx(value)) + abs(dFdy(value))
   return smoothstep(threshold-afwidth, threshold+afwidth, value);
 }
- ''');
+  ''');
 }
 
 /// Distance map contour texturing, Stefan Gustavson 2011
-/// A re-implementation of Green's method, with a 16-bit
-/// 8.8 distance map and explicit bilinear interpolation.
 /// from https://github.com/OpenGLInsights/OpenGLInsightsCode/ (public domain)
+/// glsl: float sd_tex2d(vec2 st, sampler2D tex, float oneu, float onev, float texw, float texh)
 sd_tex2d(l) {
   aastep(l);
   unpackHalf(l);
@@ -98,9 +100,11 @@ float sd_tex2d(vec2 st, sampler2D tex, float oneu, float onev, float texw, float
   ''');
 }
 
-sd_tex(l, int size) {
-  sd_tex2d(l);
-  l.add('''
+/// glsl: float sd_tex(vec3 p, sampler2D tex, float dz, float halfz, vec2 offxy, float iu, float u)
+sd_tex(int size) {
+  return (l) {
+    sd_tex2d(l);
+    l.add('''
 float sd_tex(vec3 p, sampler2D tex, float dz, float halfz, vec2 offxy, float iu, float u) {
   vec2 st = ((p.xy - offxy) * iu) * 0.5 + 0.5;
   vec4 data = texture2D(tex, st);
@@ -109,10 +113,11 @@ float sd_tex(vec3 p, sampler2D tex, float dz, float halfz, vec2 offxy, float iu,
   float z = max(0.0, abs(p.z - dz) - halfz);
   return sqrt(d * d + z * z);
 }
-  ''');
+    ''');
+  };
 }
 
-///n_tex2d(vec3 p, sampler2D tex, vec2 offxy, float iu, float u)
+/// glsl: n_tex2d(vec3 p, sampler2D tex, vec2 offxy, float iu, float u)
 n_tex2d(l) {
   l.add('''
 vec3 n_tex2d(vec3 p, sampler2D tex, vec2 offxy, float iu, float u) {
@@ -122,16 +127,19 @@ vec3 n_tex2d(vec3 p, sampler2D tex, vec2 offxy, float iu, float u) {
   //return vec3(0.5, 0.0, 0.0);
 }
   ''');
+  return l;
 }
 
+/// glsl: float sd_flatFloor(in vec3 p)
 sd_flatFloor(h) {
-  return """
+  return (l) => l.add('''
 float sd_flatFloor(in vec3 p) {
   return p.z+ $h;
 }
-  """;
+  ''');
 }
 
+/// glsl: float distance2(vec2 v, vec2 w)
 distance2(l) {
   l.add('''
 float distance2(vec2 v, vec2 w) {
@@ -142,6 +150,7 @@ float distance2(vec2 v, vec2 w) {
 ''');
 }
 
+/// glsl: float ud_segXY2(vec2 p, vec2 v, vec2 w)
 ud_segXY2(l) {
   distance2(l);
   l.add('''
@@ -156,15 +165,17 @@ float ud_segXY2(vec2 p, vec2 v, vec2 w) {
 ''');
 }
 
+/// glsl: float ud_seg(vec3 p, vec2 v, vec2 w, float dz)
 ud_seg(l) {
   ud_segXY2(l);
   l.add('''
-    float ud_seg(vec3 p, vec2 v, vec2 w, float dz) {
-      return sqrt(ud_segXY2(p.xy, v, w));
-    }
+float ud_seg(vec3 p, vec2 v, vec2 w, float dz) {
+  return sqrt(ud_segXY2(p.xy, v, w));
+}
   ''');
 }
 
+/// glsl: float sd_segXY(vec2 p, vec2 v, vec2 w)
 sd_segXY(l) {
   distance2(l);
   l.add('''
@@ -181,6 +192,7 @@ float sd_segXY(vec2 p, vec2 v, vec2 w) {
   ''');
 }
 
+/// glsl: float sd_lineXY(vec2 p, vec2 v, vec2 w)
 sd_lineXY(l) {
   distance2(l);
   l.add('''
@@ -191,10 +203,11 @@ float sd_lineXY(vec2 p, vec2 v, vec2 w) {
   ''');
 }
 
+/// glsl: color mat_chessboardXY0(in vec3 p)
 mat_chessboardXY0(size, Vector4 color0, Vector4 color1) {
   var c = 0.5 / size;
-  return '''
-color mat_chessboardXY0(in vec3 p){
+  return (l) => l.add('''
+color mat_chessboardXY0(in vec3 p) {
   //float m = p.x + p.y; // pattern for line
   //float m = fract(p.x) + fract(p.y); // pattern for triangle + m > 1.0
   float m = step(0.5, fract(p.x * $c)) + step(0.5, fract(p.y * $c)) ;
@@ -204,10 +217,12 @@ color mat_chessboardXY0(in vec3 p){
     return vec4(${color1.r}, ${color1.g}, ${color1.b}, ${color1.a});
   }
 }
-''';
+''');
 }
+
+/// glsl: color mat_chessboardXY1(in vec3 p)
 mat_chessboardXY1(ratiox, ratioy, Vector4 color0, Vector4 color1, Vector4 color2, Vector4 color3) {
-  return '''
+  return (l) => l.add('''
 color mat_chessboardXY1(in vec3 p){
   if (fract(p.x*$ratiox)>$ratiox){
     if (fract(p.y*$ratioy)>$ratioy)
@@ -221,7 +236,7 @@ color mat_chessboardXY1(in vec3 p){
       return vec4(${color3.r}, ${color3.g}, ${color3.b}, ${color3.a});
    }
 }
-''';
+''');
 }
 
 const sdHeaderFrag0 = '''
@@ -358,76 +373,12 @@ const rayMarchingFrag0 = '''
 ${sdHeaderFrag0}
 
 //------------------------------------------------------------------------------
-// Material
-
-\${obj_mats}
-
-//------------------------------------------------------------------------------
 // Shading
-float softshadow( in vec3 ro, in vec3 rd, float mint, float k ) {
-  float res = 1.0;
-  float t = mint;
-  float h = 1.0;
-  for( int i=0; i<35; i++ ) {
-    h = de(ro + rd*t).x;
-    res = min( res, k*h/t );
-    t += clamp( h, 0.02, 2.0 );
-  }
-  //return res;
-  return clamp(res,0.5,1.0);
-}
-
-vec3 getNormal(vec2 d, vec3 p) {
-  vec3 nor;
-  nor.x = de(p+eps.xyy).x - de(p-eps.xyy).x;
-  nor.y = de(p+eps.yxy).x - de(p-eps.yxy).x;
-  nor.z = de(p+eps.yyx).x - de(p-eps.yyx).x;
-  return normalize(nor);
-}
-
-//vec3 getNormal(vec2 d, vec3 p) {
-//  vec3 n = vec3(
-//    d.x-de(p-e.xyy).x,
-//    d.x-de(p-e.yxy).x,
-//    d.x-de(p-e.yyx).x
-//  );
-//  return normalize(n);
-//}
-
-
 
 \${nearLight}
 
-color shade0(color c, vec3 normal, obj o, vec3 p) {
-    
-    //spotlight
-    vec3 lightPosition = nearLight(p);
-    vec3 lightSegment = vec3(0.5, 0.5, 0.5);//lightPosition - p;
-    vec3 lightDir = normalize(lightSegment);
-    float ambient = 0.5;
-    float lightIntensity = max(0.0, dot(normal, lightDir));
-//    c.rgb = lightIntensity * c.rgb;
-//    c.rgb = (c.rgb + pow(lightIntensity,10.0))*(1.0-length(lightSegment)*.01);
-    //float sha = 1.0;
-    float sha = softshadow( p+0.01*normal, lightDir, 0.0005, 32.0 );
-    c.rgb = c.rgb * max(ambient, (sha * lightIntensity));
-    //c.a = c.a*sha;
-    return c;
-}
+\${obj_mats}
 
-color normalToColor(vec3 n) {
-  return vec4(n.xy* 0.5 + 0.5,  n.z* 0.4 + 0.6, 1.0);
-}
-
-color shadeUniformBasic(vec4 c, obj o, vec3 p) {
-  return shade0(c, getNormal(o, p), o, p);
-}
-
-color shadeNormal(obj o, vec3 p) {
-  vec3 n = getNormal(o, p);
-  color c = normalToColor(n);
-  return shade0(c, n, o, p);
-}
 
 color shade(obj o, vec3 p) {
   \${obj_shs}
@@ -497,11 +448,11 @@ vec3 nearLight(vec3 p) {
 ''';
 
 nearLight_SpotAt(Vector3 v) {
-  return'''
+  return '''
 vec3 nearLight(vec3 p) {
   return vec3(${v.x}, ${v.y}, ${v.z});
 }
-''';
+  ''';
 }
 
 nearLight_SpotGrid(size) {
@@ -511,6 +462,112 @@ vec3 nearLight(vec3 p) {
   return (floor(p * $invsize) * $size);
 }
 ''';
+}
+
+/// glsl: float softshadow( in vec3 ro, in vec3 rd, float mint, float k )
+softshadow(l) {
+  l.add('''
+float softshadow( in vec3 ro, in vec3 rd, float mint, float k ) {
+  float res = 1.0;
+  float t = mint;
+  float h = 1.0;
+  for( int i=0; i<35; i++ ) {
+    h = de(ro + rd*t).x;
+    res = min( res, k*h/t );
+    t += clamp( h, 0.02, 2.0 );
+  }
+  //return res;
+  return clamp(res,0.5,1.0);
+}
+  ''');
+  return l;
+}
+/// calcul normal from gradient via de(..)
+/// glsl: vec3 n_de(vec2 o, vec3 p) {
+n_de(l) {
+  l.add('''
+vec3 n_de(vec2 o, vec3 p) {
+  vec3 nor;
+  nor.x = de(p+eps.xyy).x - de(p-eps.xyy).x;
+  nor.y = de(p+eps.yxy).x - de(p-eps.yxy).x;
+  nor.z = de(p+eps.yyx).x - de(p-eps.yyx).x;
+  return normalize(nor);
+}
+''');
+
+//vec3 getNormal(vec2 d, vec3 p) {
+//  vec3 n = vec3(
+//    d.x-de(p-e.xyy).x,
+//    d.x-de(p-e.yxy).x,
+//    d.x-de(p-e.yyx).x
+//  );
+//  return normalize(n);
+//}
+}
+
+/// glsl: color shade0(color c, vec3 p, vec3 n)
+shade0(l) {
+  //nearLight(l)
+  softshadow(l);
+  l.add('''
+color shade0(color c, vec3 p, vec3 n) {
+  //spotlight
+  vec3 lightPosition = nearLight(p);
+  vec3 lightSegment = lightPosition - p;
+  vec3 lightDir = normalize(lightSegment);
+  float ambient = 0.5;
+  float lightIntensity = max(0.0, dot(n, lightDir));
+//    c.rgb = lightIntensity * c.rgb;
+//    c.rgb = (c.rgb + pow(lightIntensity,10.0))*(1.0-length(lightSegment)*.01);
+  //float sha = 1.0;
+  float sha = softshadow( p+0.01*n, lightDir, 0.0005, 32.0 );
+  c.rgb = c.rgb * max(ambient, (sha * lightIntensity));
+  //c.a = c.a*sha;
+  return c;
+}
+  ''');
+  return l;
+}
+
+/// glsl: color shadeOutdoor(color material, vec3 p, vec3 n, vec3 sunDir)
+shadeOutdoor(l) {
+  softshadow(l);
+  l.add('''
+color shadeOutdoor(color material, vec3 p, vec3 n, vec3 sunDir) {
+  // lighting terms
+  float occ = doGorgeousOcclusion(p, n);
+  float sha = softshadow(p, sunDir);
+  float sun = clamp( dot( n, sunDir), 0.0, 1.0);
+  float sky = clamp( 0.5 + 0.5*n.y, 0.0, 1.0);
+  float ind = clamp( dot( n, normalize(sunDir*vec3(-1.0,0.0,-1.0)) ), 0.0, 1.0);
+  
+  // compute lighting
+  vec3 lin = sun*vec3(1.64,1.27,0.99)*pow(vec3(sha),vec3(1.0,1.2,1.5));
+  lin += sky*vec3(0.16,0.20,0.28)*occ;
+  lin += ind*vec3(0.40,0.28,0.20)*occ;
+  
+  // multiply lighting and materials
+  vec3 c = material * lin;
+  
+  // apply fog
+  c = doWonderfullFog( c, pos );
+  
+  // gamma correction
+  c = pow( c, vec3(1.0/2.2) );
+  return c;
+}
+  ''');
+  return l;
+}
+
+/// glsl: color normalToColor(vec3 n)
+normalToColor(l) {
+  l.add('''
+color normalToColor(vec3 n) {
+  return vec4(n.xy* 0.5 + 0.5,  n.z* 0.4 + 0.6, 1.0);
+}
+''');
+  return l;
 }
 
 class ObjectInfo {
@@ -539,17 +596,17 @@ makeShader(List<ObjectInfo> os, {String tmpl: rayMarchingFrag0, stepmax:256, eps
    'nearLight' : nearLight
   };
 
-  var matss = [];
+  var matss = new LinkedHashSet();
   var sh0s = [];
   var shs = [];
-  var sdss = [];
+  var sdss = new LinkedHashSet();
   var des = [];
   // merge objInfo definitions
   os.forEach((o) {
     if (o.mats != null && o.mats.isNotEmpty) {
       o.mats.forEach((mat){
-        if (mat != null && matss.indexOf(mat) < 0) {
-          matss.add(mat);
+        if (mat != null) {
+          mat(matss);
         }
       });
     }
@@ -566,8 +623,8 @@ makeShader(List<ObjectInfo> os, {String tmpl: rayMarchingFrag0, stepmax:256, eps
     }
     if (o.sds != null && o.sds.isNotEmpty) {
       o.sds.forEach((sd){
-        if (sd != null && sdss.indexOf(sd) < 0) {
-          sdss.add(sd);
+        if (sd != null) {
+          sd(sdss);
         }
       });
     }
@@ -604,13 +661,8 @@ makeExtrudeZinTex(gl, textures, String utex, Vector3 center, double zSize, doubl
   runner.run();
   runner.dispose();
 
-  var sds = [];
-  sd_tex(sds, fbo.width);
-
-  var mats = [];
-  n_tex2d(mats);
-
   var tex = fbo.texture;
+  var texw = fbo.width;
   fbo.dispose(deleteTex : false);
 
   var sh = (color == null)
@@ -621,15 +673,15 @@ makeExtrudeZinTex(gl, textures, String utex, Vector3 center, double zSize, doubl
   ..uniforms='''
   uniform sampler2D ${utex};
   '''
-  ..sds = sds
+  ..sds = [sd_tex(texw)]
   ..de = "(sd_tex(p, ${utex}, ${center.z}, ${zSize * 0.5}, vec2(${center.x}, ${center.y}), ${1/unit}, ${unit}))"
-  ..mats = mats
-      ..sh = sh
-      ..at = (ctx) {
-        //glf.injectTexture(ctx, tex, 1, 'wallTex');
-        textures.inject(ctx, tex, utex);
-      }
-      ;
+  ..mats = [n_tex2d, normalToColor, shade0]
+  ..sh = sh
+  ..at = (ctx) {
+    //glf.injectTexture(ctx, tex, 1, 'wallTex');
+    textures.inject(ctx, tex, utex);
+  }
+  ;
 }
 
 class RendererR {

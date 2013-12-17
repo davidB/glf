@@ -123,7 +123,8 @@ makeVDrone(Vector3 t){
   uniform vec3 a1, a2, a3, a4;
   """
   ..de = "sd_tetrahedron(p, a1, a2, a3, a4)"
-  ..sds = ["""
+  ..sds = [
+(l) => l.add("""
 float thalfspace(vec3 p, vec3 a1, vec3 a2, vec3 a3){
   vec3 c = vec3(a1);
   c = c + (a2 - c) * 0.5;
@@ -134,8 +135,8 @@ float thalfspace(vec3 p, vec3 a1, vec3 a2, vec3 a3){
   float b = length(a1 - c);
   return max(0.0, dot(p-a1, n));
 }
-""",
-"""  
+"""),
+(l) => l.add("""  
 float sd_tetrahedron(vec3 p, vec3 a1, vec3 a2, vec3 a3, vec3 a4){
   float d = 0.0;
   d = max(thalfspace(p, a1, a3, a2),d);
@@ -144,9 +145,10 @@ float sd_tetrahedron(vec3 p, vec3 a1, vec3 a2, vec3 a3, vec3 a4){
   d = max(thalfspace(p, a1, a4, a3),d);
   return d;
 }
-"""
+""")
 ]
-  ..sh = """return shadeUniformBasic(vec4(0.5, 0.0, 0.0, 1.0), o, p);"""
+  ..mats = [r.n_de, r.shade0]
+  ..sh = """return shade0(vec4(0.5, 0.0, 0.0, 1.0), p, n_de(o, p));"""
   ..at = (ctx){
     ctx.gl.uniform3fv(ctx.getUniformLocation("a1"), a1.storage);
     ctx.gl.uniform3fv(ctx.getUniformLocation("a2"), a2.storage);
@@ -160,22 +162,26 @@ makeFloor(){
   return new r.ObjectInfo()
   ..de = "sd_flatFloor(p)"
   ..sds = [r.sd_flatFloor(1.0)]
-  ..mats = [r.mat_chessboardXY0(1.0, new Vector4(0.9,0.0,0.5,1.0), new Vector4(0.2,0.2,0.8,1.0))]
-  ..sh = """return shade0(mat_chessboardXY0(p), getNormal(o, p), o, p);"""
+  ..mats = [r.mat_chessboardXY0(1.0, new Vector4(0.9,0.0,0.5,1.0), new Vector4(0.2,0.2,0.8,1.0)), r.n_de, r.shade0]
+  ..sh = """return shade0(mat_chessboardXY0(p), p, n_de(o, p));"""
   ;
 }
 
 makeCube(){
   return new r.ObjectInfo()
   ..de = "sd_box(p, vec3(1.0,1.0,1.0))"
-  ..sh = """return shadeNormal(o, p);"""
+  ..sh = """
+    vec3 n = n_de(o, p);
+    return shade0(normalToColor(n), p, n);
+    """
   ;
 }
 
 makeWall(x, y, w, h, [z = 2.0]){
   return new r.ObjectInfo()
   ..de = "sd_box(p - vec3($x, $y, 0.0), vec3($w,$h,$z))"
-  ..sh = """return shadeUniformBasic(vec4(1.0,1.0,1.0,1.0), o, p);"""
+  ..mats = [r.n_de, r.shade0]
+  ..sh = """return shade0(vec4(1.0,1.0,1.0,1.0), p, n_de(o, p));"""
   ;
 }
 
