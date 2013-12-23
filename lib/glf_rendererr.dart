@@ -1,3 +1,4 @@
+/// see https://www.shadertoy.com/view/Xds3zN
 library glf_rendererr;
 
 import 'dart:collection';
@@ -105,26 +106,32 @@ sd_tex(int size) {
   return (l) {
     sd_tex2d(l);
     l.add('''
-float sd_tex(vec3 p, sampler2D tex, float dz, float halfz, vec2 offxy, float iu, float u) {
-  vec2 st = ((p.xy - offxy) * iu) * 0.5 + 0.5;
+float sd_tex(vec3 p, sampler2D tex, vec3 center, float zSize, float iu, float u) {
+  vec3 pt = p - center;
+  vec2 st = (pt.xy * iu) * 0.5 + 0.5;
   vec4 data = texture2D(tex, st);
   //float d = unpackHalf(data.rg);
   float d = sd_tex2d(st, tex, 1.0/${size}.0, 1.0/${size}.0, ${size}.0, ${size}.0);
-  float z = max(0.0, abs(p.z - dz) - halfz);
+  float z = max(0.0, abs(pt.z) - (zSize * 0.5));
   return sqrt(d * d + z * z);
 }
     ''');
   };
 }
 
-/// glsl: n_tex2d(vec3 p, sampler2D tex, vec2 offxy, float iu, float u)
+/// glsl: vec3 n_tex2d(vec3 p, sampler2D tex, vec3 center, float zSize, float iu, float u)
 n_tex2d(l) {
   l.add('''
-vec3 n_tex2d(vec3 p, sampler2D tex, vec2 offxy, float iu, float u) {
-  vec2 st = ((p.xy - offxy) * iu) * 0.5 + 0.5;
-  vec4 data = texture2D(tex, st);
-  return vec3(data.r, data.g, 0.0);
-  //return vec3(0.5, 0.0, 0.0);
+vec3 n_tex2d(vec3 p, sampler2D tex, vec3 center, float zSize, float iu, float u) {
+  vec3 pt = p - center;
+  float z = max(0.0, abs(pt.z) - (zSize * 0.5));
+  if (z > 0.0) {
+    return normalize(vec3(0.0, 0.0, pt.z));
+  } else {
+    vec2 st = (pt.xy * iu) * 0.5 + 0.5;
+    vec4 data = texture2D(tex, st);
+    return vec3(data.r, data.g, 0.0);
+  }
 }
   ''');
   return l;
@@ -135,6 +142,57 @@ sd_flatFloor(h) {
   return (l) => l.add('''
 float sd_flatFloor(in vec3 p) {
   return p.z+ $h;
+}
+  ''');
+}
+
+/// glsl: float sd_box(vec3 p, vec3 b)
+sd_box(l) {
+  l.add('''
+float sd_box(vec3 p, vec3 b) {
+  vec3 d = abs(p) - b;
+  //return min(max(d.x,max(d.y,d.z)),0.0) + length(max(d,0.0));
+  return min(max(d.x,max(d.y,d.z)), length(max(d,0.0)));
+}
+''');
+}
+
+/// glsl: float ud_roundBox( vec3 p, vec3 b, float r )
+ud_roundBox(l) {
+  l.add('''
+float ud_roundBox( vec3 p, vec3 b, float r ) {
+  return length(max(abs(p)-b,0.0))-r;
+}
+''');
+}
+
+/// glsl: float sd_sphere(in vec3 p, float r)
+sd_sphere(l) {
+  l.add('''
+float sd_sphere(in vec3 p, float r) {
+  return length(p)-r;
+}
+''');
+}
+
+/// glsl: float sd_torus( vec3 p, vec2 t )
+sd_torus(l) {
+  l.add('''
+float sd_torus( vec3 p, vec2 t ) {
+  vec2 q = vec2(length(p.xz)-t.x,p.y);
+  return length(q)-t.y;
+}
+  ''');
+}
+
+/// glsl: sd_cylinder( vec3 p, float radius, float halfH)
+sd_cylinder(l) {
+//    float cyl(vec3 p, float r, float c) {
+//      return max(length(p.xz)-r, abs(p.y)-c);
+//    }
+  l.add('''
+float sd_cylinder( vec3 p, float radius, float halfH ) {
+  return max(length(p.xy)-radius, abs(p.z)-halfH);
 }
   ''');
 }
@@ -279,23 +337,7 @@ uniform float ${glf.SFNAME_NEAR}, ${glf.SFNAME_FAR};
 //------------------------------------------------------------------------------
 // primitive shape (distance functions)
 
-float sd_box( vec3 p, vec3 b ) {
-  vec3 d = abs(p) - b;
-  return min(max(d.x,max(d.y,d.z)),0.0) + length(max(d,0.0));
-}
 
-float ud_roundBox( vec3 p, vec3 b, float r ) {
-  return length(max(abs(p)-b,0.0))-r;
-}
-
-float sd_sphere(in vec3 p, float r) {
-  return length(p)-r;
-}
-
-float sd_torus( vec3 p, vec2 t ) {
-  vec2 q = vec2(length(p.xz)-t.x,p.y);
-  return length(q)-t.y;
-}
 //------------------------------------------------------------------------------
 // Domain operations
 
@@ -328,14 +370,6 @@ obj de(in vec3 p) {
 const distanceFieldFrag0 = '''
 ${sdHeaderFrag0}
 
-vec3 n_de2d(vec3 p) {
-  vec3 nor;
-  nor.x = de(p+eps.xyy).x - de(p-eps.xyy).x;
-  nor.y = de(p+eps.yxy).x - de(p-eps.yxy).x;
-  nor.z = 0.0;
-  return normalize(nor);
-}
-
 vec2 packHalf(float v) {
   const vec2 bias = vec2(1.0 / 255.0, 0.0);
   vec2 rg = vec2(v, fract(v * 255.0));
@@ -358,14 +392,12 @@ void main(void) {
   float d = o.x;
   //gl_FragColor.r = abs(p.y);
   //gl_FragColor.r = clamp(o.x, 0.0, 1.0);
-  vec2 d2 = packHalf(d);
-  vec3 n = n_de2d(p);
+  //vec2 d2 = packHalf(d);
+  //vec3 n = n_de2d(p);
   //gl_FragColor.r = d2.r;
   //gl_FragColor.g = d2.g;
   gl_FragColor.b = d;
   gl_FragColor.a = 1.0;
-  gl_FragColor.r = n.x;
-  gl_FragColor.g = n.y;
 }
 ''';
 
@@ -375,12 +407,10 @@ ${sdHeaderFrag0}
 //------------------------------------------------------------------------------
 // Shading
 
-\${nearLight}
-
 \${obj_mats}
 
 
-color shade(obj o, vec3 p) {
+color shade(obj o, vec3 p, float t, vec3 rd) {
   \${obj_shs}
   return color(0.0, 0.0, 0.0, 0.0);
 }
@@ -390,6 +420,7 @@ color shade(obj o, vec3 p) {
 color blend(color front, color back) {
   vec4 c;
   //if (back.a < 0.2) return front;
+  // c.rgb = mix(front.rgb, back.rgb, front.a);
   c.rgb = (1.0 - front.a) * back.a * (back.rgb) + front.rgb * front.a;
   c.a = front.a + (1.0 - front.a) * back.a;//(1.0 - src.a) * dst.a;
   //c.a = max(front.a, back.a);
@@ -425,7 +456,7 @@ void main(void) {
     o = de(p);
     if (abs(o.x) < EPSILON_DE) {
       //c.rgb = vec3((t - near)/(far - near));  //display distance (z)
-      c = blend(c, shade(o, p));
+      c = blend(c, shade(o, p, t, rd));
       //c.rgb = vec3(0.0,0.0,0.5);
       //c.rgb = vec3(o.y*0.1, 0.0, 0.0); //display matId
       c.a = 1.0;
@@ -441,40 +472,61 @@ void main(void) {
 }
 ''';
 
-const nearLight0 = '''
-vec3 nearLight(vec3 p) {
-  return vec3(0.0, 0.0, 0.0);
+lightSegment0(l){
+  l.add('''
+vec3 lightSegment(vec3 p) {
+  return -p;
 }
-''';
+  ''');
+}
 
-nearLight_SpotAt(Vector3 v) {
-  return '''
-vec3 nearLight(vec3 p) {
+lightSegment_spotAt(Vector3 v) {
+  return (l) {
+    l.add('''
+vec3 lightSegment(vec3 p) {
+  return vec3(${v.x}, ${v.y}, ${v.z}) - p;
+}
+  ''');
+  };
+}
+
+lightSegment_directional(Vector3 v) {
+  return (l) {
+    l.add('''
+vec3 lightSegment(vec3 p) {
   return vec3(${v.x}, ${v.y}, ${v.z});
 }
-  ''';
+  ''');
+  };
 }
 
-nearLight_SpotGrid(size) {
+lightSegment_spotGrid(size) {
   var invsize = 1.0 / size;
-  return'''
-vec3 nearLight(vec3 p) {
-  return (floor(p * $invsize) * $size);
+  return (l) {
+    l.add('''
+vec3 lightSegment(vec3 p) {
+  //return (fract(p * $invsize) * $size);
+  return mod(p, $size);
 }
-''';
+  ''');
+  };
 }
 
 /// glsl: float softshadow( in vec3 ro, in vec3 rd, float mint, float k )
 softshadow(l) {
   l.add('''
-float softshadow( in vec3 ro, in vec3 rd, float mint, float k ) {
+float softshadow( in vec3 ro, in vec3 rd, float mint, float maxt, float k ) {
   float res = 1.0;
   float t = mint;
-  float h = 1.0;
-  for( int i=0; i<35; i++ ) {
-    h = de(ro + rd*t).x;
-    res = min( res, k*h/t );
-    t += clamp( h, 0.02, 2.0 );
+  for( int i=0; i<30; i++ ) {
+    if( t<maxt ) {
+        float h = de( ro + rd*t ).x;
+        res = min( res, k*h/t );
+        t += 0.02;
+    }
+//    float h = de(ro + rd*t).x;
+//    res = min( res, k*h/t );
+//    t += clamp( h, 0.02, 2.0 );
   }
   //return res;
   return clamp(res,0.5,1.0);
@@ -482,6 +534,7 @@ float softshadow( in vec3 ro, in vec3 rd, float mint, float k ) {
   ''');
   return l;
 }
+
 /// calcul normal from gradient via de(..)
 /// glsl: vec3 n_de(vec2 o, vec3 p) {
 n_de(l) {
@@ -505,41 +558,97 @@ vec3 n_de(vec2 o, vec3 p) {
 //}
 }
 
+/// glsl: float ao_de(in vec3 p, in vec3 n)
+/// alternative at http://www.pouet.net/topic.php?which=7931&page=1
+/// sss = 1.0 - ao(p,rd); (rd or lightDir ?)
+ao_de(l) {
+  l.add('''
+float ao_de(in vec3 p, in vec3 n){
+  float totao = 0.0;
+  float sca = 1.0;
+  for (int aoi=0; aoi<5; aoi++ ) {
+    float hr = 0.01 + 0.05*float(aoi);
+    vec3 aopos =  n * hr + p;
+    float dd = de( aopos ).x;
+    totao += -(dd-hr)*sca;
+    sca *= 0.75;
+  }
+  return clamp( 1.0 - 4.0*totao, 0.0, 1.0 );
+}
+  ''');
+}
+
+lightSeg_spot(l){
+  l.add('''
+#DEFINE lightSeg_spot(p, lightPosition) lightPosition - p
+  ''');
+}
+
 /// glsl: color shade0(color c, vec3 p, vec3 n)
 shade0(l) {
-  //nearLight(l)
   softshadow(l);
   l.add('''
 color shade0(color c, vec3 p, vec3 n) {
-  //spotlight
-  vec3 lightPosition = nearLight(p);
-  vec3 lightSegment = lightPosition - p;
-  vec3 lightDir = normalize(lightSegment);
+  vec3 lightDir = normalize(lightSegment(p));
   float ambient = 0.5;
   float lightIntensity = max(0.0, dot(n, lightDir));
 //    c.rgb = lightIntensity * c.rgb;
 //    c.rgb = (c.rgb + pow(lightIntensity,10.0))*(1.0-length(lightSegment)*.01);
   //float sha = 1.0;
-  float sha = softshadow( p+0.01*n, lightDir, 0.0005, 32.0 );
+  float sha = softshadow( p+0.01*n, lightDir, 0.0005, 10.0, 32.0 );
   c.rgb = c.rgb * max(ambient, (sha * lightIntensity));
   //c.a = c.a*sha;
   return c;
 }
   ''');
-  return l;
 }
 
-/// glsl: color shadeOutdoor(color material, vec3 p, vec3 n, vec3 sunDir)
+shade1(l) {
+  softshadow(l);
+  ao_de(l);
+  l.add('''
+color shade1(color c, vec3 p, vec3 n, float t, vec3 rd) {
+  float ao = ao_de(p, n);
+
+  vec3 lig = normalize( lightSegment(p) );
+  float amb = clamp( 0.5+0.5*n.y, 0.0, 1.0 );
+  float dif = clamp( dot( n, lig ), 0.0, 1.0 );
+  float bac = clamp( dot( n, normalize(vec3(-lig.x,0.0,-lig.z))), 0.0, 1.0 )*clamp( 1.0-p.y,0.0,1.0);
+
+  float sh = 1.0;
+  if( dif>0.02 ) { sh = softshadow( p, lig, 0.02, 10.0, 7.0 ); dif *= sh; }
+
+  vec3 brdf = vec3(0.0);
+  brdf += 0.20*amb*vec3(0.10,0.11,0.13)*ao;
+  brdf += 0.20*bac*vec3(0.15,0.15,0.15)*ao;
+  brdf += 1.20*dif*vec3(1.00,0.90,0.70);
+
+  float pp = clamp(dot(reflect(rd, n), lig), 0.0, 1.0 );
+  float spe = sh*pow(pp, 16.0);
+  float fre = ao*pow(clamp(1.0+dot(n, rd),0.0,1.0), 2.0 );
+
+  vec3 col = c.rgb;
+  col = col*brdf + col * vec3(1.0)*spe + 0.2*fre*(0.5+0.5*col);
+  col *= exp( -0.01*t*t );
+  c.rgb = col;
+  return c;
+}
+  ''');
+}
+
+/// glsl: color shadeOutdoor(color material, vec3 p, vec3 n, vec3 lightSegment)
 shadeOutdoor(l) {
   softshadow(l);
+  ao_de(l);
   l.add('''
-color shadeOutdoor(color material, vec3 p, vec3 n, vec3 sunDir) {
+color shadeOutdoor(color c, vec3 p, vec3 n) {
   // lighting terms
-  float occ = doGorgeousOcclusion(p, n);
-  float sha = softshadow(p, sunDir);
-  float sun = clamp( dot( n, sunDir), 0.0, 1.0);
-  float sky = clamp( 0.5 + 0.5*n.y, 0.0, 1.0);
-  float ind = clamp( dot( n, normalize(sunDir*vec3(-1.0,0.0,-1.0)) ), 0.0, 1.0);
+  float occ = ao_de(p, n);
+  vec3 sunDir = normalize(lightSegment(p));
+  float sha = softshadow(p, sunDir, 0.02, 10.0, 7.0);
+  float sun = clamp(dot(n, sunDir), 0.0, 1.0);
+  float sky = clamp(0.5 + 0.5*n.y, 0.0, 1.0);
+  float ind = clamp(dot(n, normalize(sunDir*vec3(-1.0,0.0,-1.0)) ), 0.0, 1.0);
   
   // compute lighting
   vec3 lin = sun*vec3(1.64,1.27,0.99)*pow(vec3(sha),vec3(1.0,1.2,1.5));
@@ -547,17 +656,17 @@ color shadeOutdoor(color material, vec3 p, vec3 n, vec3 sunDir) {
   lin += ind*vec3(0.40,0.28,0.20)*occ;
   
   // multiply lighting and materials
-  vec3 c = material * lin;
+  vec3 col = c.rgb * lin;
   
   // apply fog
-  c = doWonderfullFog( c, pos );
+  //col = doWonderfullFog(col, p);
   
   // gamma correction
-  c = pow( c, vec3(1.0/2.2) );
+  col = pow(col, vec3(1.0/2.2) );
+  c.rgb = col;
   return c;
 }
   ''');
-  return l;
 }
 
 /// glsl: color normalToColor(vec3 n)
@@ -566,8 +675,25 @@ normalToColor(l) {
 color normalToColor(vec3 n) {
   return vec4(n.xy* 0.5 + 0.5,  n.z* 0.4 + 0.6, 1.0);
 }
-''');
-  return l;
+  ''');
+}
+
+matIdToColor(l) {
+  l.add('''
+color matIdToColor(float m) {
+  return vec4(vec3(0.6) + 0.4*sin( vec3(0.05,0.08,0.10)*(m-1.0) ), 1.0);
+}
+  ''');
+}
+
+/// glsl: color normalToColor(vec3 n)
+aoToColor(l) {
+  ao_de(l);
+  l.add('''
+color aoToColor(vec3 p, vec3 n) {
+  return vec4(vec3(ao_de(p, n)), 1.0);
+}
+  ''');
 }
 
 class ObjectInfo {
@@ -589,11 +715,10 @@ class ObjectInfo {
   glf.RunOnProgramContext at;
 }
 
-makeShader(List<ObjectInfo> os, {String tmpl: rayMarchingFrag0, stepmax:256, epsilon_de: 0.005, nearLight : nearLight0}) {
+makeShader(List<ObjectInfo> os, {String tmpl: rayMarchingFrag0, stepmax:256, epsilon_de: 0.005, lightSegment}) {
   var kv = {
    'stepmax' : stepmax,
    'epsilon_de': epsilon_de,
-   'nearLight' : nearLight
   };
 
   var matss = new LinkedHashSet();
@@ -601,6 +726,9 @@ makeShader(List<ObjectInfo> os, {String tmpl: rayMarchingFrag0, stepmax:256, eps
   var shs = [];
   var sdss = new LinkedHashSet();
   var des = [];
+  if (lightSegment != null) {
+    lightSegment(matss);
+  }
   // merge objInfo definitions
   os.forEach((o) {
     if (o.mats != null && o.mats.isNotEmpty) {
@@ -642,6 +770,7 @@ makeShader(List<ObjectInfo> os, {String tmpl: rayMarchingFrag0, stepmax:256, eps
   return interpolate(tmpl, kv);
 }
 
+/// out.mats and out.sh are not set
 makeExtrudeZinTex(gl, textures, String utex, Vector3 center, double zSize, double unit, List<ObjectInfo> objs, {Vector4 color}){
   unit = unit * 0.5;
   var fbo = new glf.FBO(gl);
@@ -665,20 +794,18 @@ makeExtrudeZinTex(gl, textures, String utex, Vector3 center, double zSize, doubl
   var texw = fbo.width;
   fbo.dispose(deleteTex : false);
 
+  var n = "n_tex2d(p, ${utex}, vec3(${center.x}, ${center.y}, ${center.z}), $zSize, ${1/unit}, ${unit})";
   var sh = (color == null)
-      ? """return normalToColor(n_tex2d(p, ${utex}, vec2(${center.x}, ${center.y}), ${1/unit}, ${unit}));"""
-      : """return shade0(vec4(${color.r}, ${color.g}, ${color.b}, ${color.a}), n_tex2d(p, ${utex}, vec2(${center.x}, ${center.y}), ${1/unit}, ${unit}), o, p);"""
+      ? """return normalToColor($n);"""
+      : """return shade0(vec4(${color.r}, ${color.g}, ${color.b}, ${color.a}), p, $n);"""
       ;
   return new ObjectInfo()
   ..uniforms='''
   uniform sampler2D ${utex};
   '''
   ..sds = [sd_tex(texw)]
-  ..de = "(sd_tex(p, ${utex}, ${center.z}, ${zSize * 0.5}, vec2(${center.x}, ${center.y}), ${1/unit}, ${unit}))"
-  ..mats = [n_tex2d, normalToColor, shade0]
-  ..sh = sh
+  ..de = "(sd_tex(p, ${utex}, vec3(${center.x}, ${center.y}, ${center.z}), ${zSize}, ${1/unit}, ${unit}))"
   ..at = (ctx) {
-    //glf.injectTexture(ctx, tex, 1, 'wallTex');
     textures.inject(ctx, tex, utex);
   }
   ;
@@ -689,12 +816,11 @@ class RendererR {
   glf.Filter2DRunner _post2d;
   List<glf.Filter2D>  get filters2d => _post2d.filters;
   glf.CameraInfo camera;
-  var nearLight = nearLight0;
   var tmpl = rayMarchingFrag0;
   var stepmax = 256;
   var epsilon_de = 0.005;
   var debugPrintFragShader = false;
-
+  var lightSegment = lightSegment0;
   final _os = new List<ObjectInfo>();
   var _needShaderUpdate = true;
 
@@ -727,7 +853,7 @@ class RendererR {
   }
 
   _updateShader() {
-    var frag = makeShader(_os, tmpl:tmpl, stepmax: stepmax, epsilon_de:epsilon_de, nearLight: nearLight);
+    var frag = makeShader(_os, tmpl:tmpl, stepmax: stepmax, epsilon_de:epsilon_de, lightSegment: lightSegment);
     if (debugPrintFragShader) {
       print("_updateShader");
       print(frag);

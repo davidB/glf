@@ -1,6 +1,5 @@
 import 'dart:html';
 import 'dart:async';
-import 'dart:web_gl' as webgl;
 
 import 'package:vector_math/vector_math.dart';
 import 'package:asset_pack/asset_pack.dart';
@@ -67,7 +66,7 @@ class Main {
       runner.filters2d.add(am['filter2d_fxaa']);
     });
     runner.camera = makeCameraRM();
-    runner.nearLight = r.nearLight_SpotAt(new Vector3(2.0, 1.0, 5.0));
+    runner.lightSegment = r.lightSegment_spotAt(new Vector3(2.0, 1.0, 5.0));
     runner.register(makeFloor());
     runner.register(makeVDrone(new Vector3(1.0, 2.0, 0.0)));
     runner.register(makeCube());
@@ -78,7 +77,7 @@ class Main {
 
     update(t){
       statsU.start();
-      window.animationFrame.then(update);
+//      window.animationFrame.then(update);
       runner.run();
       debugTexR0.run();
       statsU.stop();
@@ -103,14 +102,40 @@ makeCameraRM(){
   document.onKeyDown.listen((e){
     if (e.keyCode == KeyCode.Z) camera.position.sub(camera.viewMatrix.forward);
     if (e.keyCode == KeyCode.S) camera.position.add(camera.viewMatrix.forward);
-    if (e.keyCode == KeyCode.D) camera.position.sub(camera.viewMatrix.right);
-    if (e.keyCode == KeyCode.Q) camera.position.add(camera.viewMatrix.right);
+    if (e.keyCode == KeyCode.D) camera.position.add(camera.viewMatrix.right);
+    if (e.keyCode == KeyCode.Q) camera.position.sub(camera.viewMatrix.right);
     if (e.keyCode == KeyCode.R) camera.position.sub(camera.viewMatrix.up);
     if (e.keyCode == KeyCode.F) camera.position.add(camera.viewMatrix.up);
-    if (e.keyCode == KeyCode.NUM_ZERO) camera.position.setValues(0.0, 0.0, 10.0);
-    //camera.updateViewMatrix();
+    camera.upDirection.setFrom(camera.viewMatrix.up);
+
+    if (e.keyCode == KeyCode.NUM_ZERO){
+      camera.position.setValues(0.0, 0.0, 10.0);
+      camera.upDirection.setValues(0.0, 1.0, 0.0);
+    }
+    camera.updateViewMatrix();
   });
   return camera;
+}
+
+defaultShadeMats(l) {
+  r.n_de(l);
+  r.normalToColor(l);
+  r.aoToColor(l);
+  r.shade1(l);
+  r.shade0(l);
+  r.shadeOutdoor(l);
+}
+
+defaultShade({String c : "normalToColor(n)", String n : "n_de(o, p)"}) {
+  return """
+  vec3 n = $n;
+  vec3 nf = faceforward(n, rd, n);
+  //return shade1($c, p, nf, t, rd);
+  //return shade0($c, p, nf);
+  //return shadeOutdoor($c, p, nf);
+  //return aoToColor(p, nf);
+  return normalToColor(n);
+  """;
 }
 
 makeVDrone(Vector3 t){
@@ -147,8 +172,8 @@ float sd_tetrahedron(vec3 p, vec3 a1, vec3 a2, vec3 a3, vec3 a4){
 }
 """)
 ]
-  ..mats = [r.n_de, r.shade0]
-  ..sh = """return shade0(vec4(0.5, 0.0, 0.0, 1.0), p, n_de(o, p));"""
+  ..mats = [defaultShadeMats]
+  ..sh = defaultShade(c : "vec4(0.5, 0.0, 0.0, 1.0)")
   ..at = (ctx){
     ctx.gl.uniform3fv(ctx.getUniformLocation("a1"), a1.storage);
     ctx.gl.uniform3fv(ctx.getUniformLocation("a2"), a2.storage);
@@ -162,26 +187,26 @@ makeFloor(){
   return new r.ObjectInfo()
   ..de = "sd_flatFloor(p)"
   ..sds = [r.sd_flatFloor(1.0)]
-  ..mats = [r.mat_chessboardXY0(1.0, new Vector4(0.9,0.0,0.5,1.0), new Vector4(0.2,0.2,0.8,1.0)), r.n_de, r.shade0]
-  ..sh = """return shade0(mat_chessboardXY0(p), p, n_de(o, p));"""
+  ..mats = [r.mat_chessboardXY0(1.0, new Vector4(0.9,0.0,0.5,1.0), new Vector4(0.2,0.2,0.8,1.0)), defaultShadeMats]
+  ..sh = defaultShade(c : "mat_chessboardXY0(p)")
   ;
 }
 
 makeCube(){
   return new r.ObjectInfo()
+  ..sds = [r.sd_box]
   ..de = "sd_box(p, vec3(1.0,1.0,1.0))"
-  ..sh = """
-    vec3 n = n_de(o, p);
-    return shade0(normalToColor(n), p, n);
-    """
+  ..mats = [defaultShadeMats]
+  ..sh = defaultShade()
   ;
 }
 
 makeWall(x, y, w, h, [z = 2.0]){
   return new r.ObjectInfo()
+  ..sds = [r.sd_box]
   ..de = "sd_box(p - vec3($x, $y, 0.0), vec3($w,$h,$z))"
-  ..mats = [r.n_de, r.shade0]
-  ..sh = """return shade0(vec4(1.0,1.0,1.0,1.0), p, n_de(o, p));"""
+  ..mats = [defaultShadeMats]
+  ..sh = defaultShade(c : "vec4(1.0,1.0,1.0,1.0)")
   ;
 }
 
@@ -197,5 +222,11 @@ makeWallTexture(gl, textures, z, zSize, offx, offy, unit){
   }
 //  var tex = fbo.texture;
 //  debugTexR0.tex = tex;
-  return r.makeExtrudeZinTex(gl, textures, "wallTex", new Vector3(5.0, 0.0, z), zSize, unit, objs);
+  var utex = "wallTex";
+  var center = new Vector3(offx, offy, z);
+  return r.makeExtrudeZinTex(gl, textures, utex, center, zSize, unit, objs)
+  ..mats = [r.n_tex2d, defaultShadeMats]
+  //..sh = defaultShade(n : "n_tex2d(p, ${utex}, vec3(${center.x}, ${center.y}, ${center.z}), $zSize, ${1/unit}, ${unit})")
+  ..sh = defaultShade()
+  ;
 }
