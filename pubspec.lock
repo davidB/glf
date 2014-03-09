@@ -4,48 +4,47 @@ packages:
   asset_pack:
     description: asset_pack
     source: hosted
-    version: "0.6.2"
+    version: "0.6.3"
+  bot:
+    description: bot
+    source: hosted
+    version: "0.26.0+1"
   browser:
     description: browser
     source: hosted
-    version: "0.9.0"
+    version: "0.10.0"
   crypto:
     description: crypto
     source: hosted
     version: "0.9.0"
   dartemis_toolbox:
     description:
-      path: "/home/dwayne/work/dart/glf/../dartemis_toolbox"
-      relative: true
-    source: path
-    version: "0.5.0-dev"
+      ref: null
+      resolved-ref: b70ef297e3a2ed7ebe4f696e6811384d1550b8b9
+      url: "https://github.com/davidB/dartemis_toolbox.git"
+    source: git
+    version: "0.6.0-dev"
   html_toolbox:
-    description:
-      path: "/home/dwayne/work/dart/glf/../html_toolbox"
-      relative: true
-    source: path
-    version: "0.1.0"
+    description: html_toolbox
+    source: hosted
+    version: "0.2.0"
   js:
     description: js
     source: hosted
-    version: "0.2.0"
-  meta:
-    description: meta
-    source: hosted
-    version: "0.8.8"
+    version: "0.2.2"
   path:
     description: path
     source: hosted
-    version: "0.9.0"
+    version: "1.0.0"
   stack_trace:
     description: stack_trace
     source: hosted
-    version: "0.9.0"
+    version: "0.9.2"
   unittest:
     description: unittest
     source: hosted
-    version: "0.8.10+4"
+    version: "0.10.0"
   vector_math:
     description: vector_math
     source: hosted
-    version: "1.3.5"
+    version: "1.4.3"
