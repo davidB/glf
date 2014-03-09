@@ -105,9 +105,13 @@ class Filter2DRunner {
         gl.bindFramebuffer(FRAMEBUFFER, dest.buffer);
         dest = (dest == _fbo0) ? _fbo1 : _fbo0;
       }
-      var ctx = filters[i].ctx;
-      var cfg = filters[i].cfg;
-      ctx.gl.useProgram(ctx.program);
+      var f = filters[i];
+      if (f == null) {
+        print("f is null for i : ${i} / ${filters.length}");
+      }
+      var ctx = f.ctx;
+      var cfg = f.cfg;
+      ctx.use();
       plan.injectUniforms(ctx);
       //if (ctx._ats.length == 1 && ctx._ats[0] != null) ctx._ats[0](ctx);
       if (cfg != null) cfg(ctx);

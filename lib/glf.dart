@@ -119,6 +119,10 @@ class ProgramContext {
     return b;
   }
 
+  use() {
+    gl.useProgram(program);
+  }
+
   disableAllAttrib([ProgramContext exceptFrom]) {
     var except = (exceptFrom == null)? []:exceptFrom._attributes.keys;
     _attributes.forEach((k,v){
