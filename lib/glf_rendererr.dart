@@ -2,7 +2,9 @@
 library glf_rendererr;
 
 import 'dart:collection';
+import 'dart:html';
 import 'dart:web_gl' as webgl;
+import 'package:crypto/crypto.dart';
 import 'package:glf/glf.dart' as glf;
 import 'package:vector_math/vector_math.dart';
 import 'package:html_toolbox/html_toolbox.dart';
@@ -56,6 +58,92 @@ float aastep (float threshold , float value) {
 }
   ''');
 }
+
+/// rotate vector
+/// see https://code.google.com/p/kri/wiki/Quaternions
+/// glsl: vec3 qrot(vec4 q, vec3 v)
+qrot(l) {
+  l.add('''
+vec3 qrot(vec4 q, vec3 v) {
+  return v + 2.0*cross(q.xyz, cross(q.xyz,v) + q.w*v);
+}
+  ''');
+}
+
+/// rotate vector
+/// glsl: vec3 qrotinv(vec4 q, vec3 v)
+qrotinv(l) {
+  l.add('''
+vec3 qrotinv(vec4 q, vec3 v) {
+  vec3 dir = -q.xyz; 
+  return v + 2.0*cross(dir, cross(dir,v) + q.w*v);
+}
+  ''');
+}
+
+/// rotate vector (alternative)
+/// see https://code.google.com/p/kri/wiki/Quaternions
+/// glsl: vec3 qrot_2(vec4 q, vec3 v)
+qrot_2(l) {
+  l.add('''
+vec3 qrot_2(vec4 q, vec3 v) {
+  return v*(q.w*q.w - dot(q.xyz,q.xyz)) + 2.0*q.xyz*dot(q.xyz,v) + 2.0*q.w*cross(q.xyz,v);
+}
+  ''');
+}
+
+/// combine quaternions
+/// see https://code.google.com/p/kri/wiki/Quaternions
+/// glsl: vec4 qmul(vec4 a, vec4 b)
+qmul(l) {
+  l.add('''
+vec4 qmul(vec4 a, vec4 b) {
+  return vec4(cross(a.xyz,b.xyz) + a.xyz*b.w + b.xyz*a.w, a.w*b.w - dot(a.xyz,b.xyz));
+}
+  ''');
+}
+
+/// inverse quaternion
+/// see https://code.google.com/p/kri/wiki/Quaternions
+/// glsl: vec4 qinv(vec4 q)
+qinv(l) {
+  l.add('''
+vec4 qinv(vec4 q) {
+  return vec4(-q.xyz,q.w);
+}
+  ''');
+}
+
+/// perspective project
+/// see https://code.google.com/p/kri/wiki/Quaternions
+/// glsl: vec4 get_projection(vec3 v, vec4 pr)
+get_projection(l) {
+  l.add('''
+vec4 get_projection(vec3 v, vec4 pr) {
+  return vec4( v.xy * pr.xy, v.z*pr.z + pr.w, -v.z);
+}
+  ''');
+}
+
+////// transform by Spatial forward
+////// see https://code.google.com/p/kri/wiki/Quaternions
+//qrot(l) {
+//  l.add('''
+//vec3 trans_for(vec3 v, Spatial s)       {
+//        return qrot(s.rot, v*s.pos.w) + s.pos.xyz;
+//}
+//  ''');
+//}
+
+////// transform by Spatial inverse
+////// see https://code.google.com/p/kri/wiki/Quaternions
+//trans_inv(l) {
+//  l.add('''
+//vec3 trans_inv(vec3 v, Spatial s)       {
+//        return qrot( vec4(-s.rot.xyz, s.rot.w), (v-s.pos.xyz)/s.pos.w );
+//}
+//  ''');
+//}
 
 /// Distance map contour texturing, Stefan Gustavson 2011
 /// from https://github.com/OpenGLInsights/OpenGLInsightsCode/ (public domain)
@@ -519,14 +607,14 @@ float softshadow( in vec3 ro, in vec3 rd, float mint, float maxt, float k ) {
   float res = 1.0;
   float t = mint;
   for( int i=0; i<30; i++ ) {
-    if( t<maxt ) {
-        float h = de( ro + rd*t ).x;
-        res = min( res, k*h/t );
-        t += 0.02;
-    }
-//    float h = de(ro + rd*t).x;
-//    res = min( res, k*h/t );
-//    t += clamp( h, 0.02, 2.0 );
+//    if( t<maxt ) {
+//        float h = de( ro + rd*t ).x;
+//        res = min( res, k*h/t );
+//        t += 0.02;
+//    }
+    float h = de(ro + rd*t).x;
+    res = min( res, k*h/t );
+    t += clamp( h, 0.02, 2.0 );
   }
   //return res;
   return clamp(res,0.5,1.0);
@@ -787,6 +875,7 @@ makeExtrudeZinTex(gl, textures, String utex, Vector3 center, double zSize, doubl
   var w = 1.0; //unit/ (nb * 2.0);
   var h = 0.5; //unit/ (nb * 0.5);
   objs.forEach((obj) => runner.register(obj));
+  runner.updateShader();
   runner.run();
   runner.dispose();
 
@@ -823,12 +912,15 @@ class RendererR {
   var lightSegment = lightSegment0;
   final _os = new List<ObjectInfo>();
   var _needShaderUpdate = true;
+  var _runningFrag;
+  var _makeShader;
 
   get os => _os;
   get needShaderUpdate => _needShaderUpdate;
+  get fragment => _runningFrag;
 
   var _exts = [];
-  RendererR(gl, {glf.FBO fboTarget}) : this.gl = gl{
+  RendererR(gl, {glf.FBO fboTarget, makeShader : makeShader}) : this.gl = gl{
     if (fboTarget != null) {
       _post2d = new glf.Filter2DRunner.intoFBO(gl, fboTarget);
     } else {
@@ -839,12 +931,14 @@ class RendererR {
     // reserve placeholder for raymarching shader
     _exts.add(gl.getExtension("OES_standard_derivatives"));
     _exts.add(gl.getExtension("OES_texture_float"));
+    _makeShader = makeShader;
     _post2d.filters.add(null);
   }
 
   register(ObjectInfo o) {
     _os.add(o);
     _needShaderUpdate = true;
+    print("register : ${o.de}");
   }
 
   unregister(ObjectInfo o) {
@@ -852,26 +946,39 @@ class RendererR {
     _needShaderUpdate = true;
   }
 
-  _updateShader() {
-    var frag = makeShader(_os, tmpl:tmpl, stepmax: stepmax, epsilon_de:epsilon_de, lightSegment: lightSegment);
+  updateShader() {
+    var t0 = window.performance.now();
+    String frag = _makeShader(_os, tmpl:tmpl, stepmax: stepmax, epsilon_de:epsilon_de, lightSegment: lightSegment);
     if (debugPrintFragShader) {
-      print("_updateShader");
-      print(frag);
+      print("_updateShader : compiling ${frag != _runningFrag}");
     }
-    _post2d.filters[0] = new glf.Filter2D(gl, frag, (ctx){
-      ctx.gl.uniform1f(ctx.getUniformLocation(glf.SFNAME_NEAR), camera.near);
-      ctx.gl.uniform1f(ctx.getUniformLocation(glf.SFNAME_FAR), camera.far);
-      ctx.gl.uniform3fv(ctx.getUniformLocation(glf.SFNAME_VIEWPOSITION), camera.position.storage);
-      ctx.gl.uniform3fv(ctx.getUniformLocation(glf.SFNAME_VIEWUP), camera.upDirection.storage);
-      ctx.gl.uniform3fv(ctx.getUniformLocation(glf.SFNAME_FOCUSPOSITION), camera.focusPosition.storage);
-      _os.forEach((x){if (x.at != null) { x.at(ctx); }});
-    });
+    if (frag != _runningFrag) {
+      _post2d.filters[0] = new glf.Filter2D(gl, frag, (ctx){
+        ctx.gl.uniform1f(ctx.getUniformLocation(glf.SFNAME_NEAR), camera.near);
+        ctx.gl.uniform1f(ctx.getUniformLocation(glf.SFNAME_FAR), camera.far);
+        ctx.gl.uniform3fv(ctx.getUniformLocation(glf.SFNAME_VIEWPOSITION), camera.position.storage);
+        ctx.gl.uniform3fv(ctx.getUniformLocation(glf.SFNAME_VIEWUP), camera.upDirection.storage);
+        ctx.gl.uniform3fv(ctx.getUniformLocation(glf.SFNAME_FOCUSPOSITION), camera.focusPosition.storage);
+        _os.forEach((x){if (x.at != null) { x.at(ctx); }});
+      });
+      _runningFrag = frag;
+//      if (debugPrintFragShader) {
+//        var hasher = new MD5()..add(frag.codeUnits);
+//        var bytes = hasher.close();
+//        var hash = CryptoUtils.bytesToBase64(bytes, urlSafe: true, addLineSeparator: false);
+//        print("_updateShader --- \n${frag}\n --- ${hash}");
+//      }
+    }
+    if (debugPrintFragShader) {
+      print("_updateShader : end ${window.performance.now() - t0} : ${_post2d.filters[0]}");
+    }
     _needShaderUpdate = false;
   }
 
   run() {
     if (camera == null) throw new Exception("camera undefined");
-    if (_needShaderUpdate) _updateShader();
+    if (_runningFrag == null) throw new Exception("no frag defined");
+    //if (_needShaderUpdate) updateShader();
     _post2d.run();
   }
 

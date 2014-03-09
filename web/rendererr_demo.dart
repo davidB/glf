@@ -71,13 +71,14 @@ class Main {
     runner.register(makeVDrone(new Vector3(1.0, 2.0, 0.0)));
     runner.register(makeCube());
     runner.register(makeWallTexture(gl, textures, 1.0, 1.5, 1.0, 1.0, 3.0));
+    runner.updateShader();
 //    for(var i = 0; i < 10; i++){
 //      runner.register(makeWall(i+1.0, i+2.0, 2.0, 0.5));
 //    }
 
     update(t){
       statsU.start();
-//      window.animationFrame.then(update);
+      //window.animationFrame.then(update);
       runner.run();
       debugTexR0.run();
       statsU.stop();
