@@ -457,7 +457,7 @@ _linkProgram(RenderingContext gl, Shader vertex, Shader fragment, [deleteShaderO
     }
     gl.deleteProgram(program);
     program = null;
-    throw new Exception("An error occurred compiling the shaders: ${msg}");
+    throw new Exception("An error occurred linking the shaders: ${msg}");
   }
   return program;
 }
