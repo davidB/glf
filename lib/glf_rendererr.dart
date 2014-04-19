@@ -4,7 +4,6 @@ library glf_rendererr;
 import 'dart:collection';
 import 'dart:html';
 import 'dart:web_gl' as webgl;
-import 'package:crypto/crypto.dart';
 import 'package:glf/glf.dart' as glf;
 import 'package:vector_math/vector_math.dart';
 import 'package:html_toolbox/html_toolbox.dart';
@@ -357,11 +356,7 @@ color mat_chessboardXY0(in vec3 p) {
   //float m = p.x + p.y; // pattern for line
   //float m = fract(p.x) + fract(p.y); // pattern for triangle + m > 1.0
   float m = step(0.5, fract(p.x * $c)) + step(0.5, fract(p.y * $c)) ;
-  if ( m == 1.0) {
-    return vec4(${color0.r}, ${color0.g}, ${color0.b}, ${color0.a});
-  } else {
-    return vec4(${color1.r}, ${color1.g}, ${color1.b}, ${color1.a});
-  }
+  mix(vec4(${color1.r}, ${color1.g}, ${color1.b}, ${color1.a}), vec4(${color0.r}, ${color0.g}, ${color0.b}, ${color0.a}) ,m);
 }
 ''');
 }
