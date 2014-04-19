@@ -209,7 +209,8 @@ class ViewportCamera {
     var onResize = (evt){
       fullCanvas(canvas);
     };
-    return Window.resizeEvent.forTarget(canvas).listen(onResize);
+    //return Window.resizeEvent.forTarget(canvas).listen(onResize);
+    return canvas.onResize.listen(onResize);
   }
 }
 
@@ -266,6 +267,6 @@ class ViewportPlan {
     var onResize = (evt){
       fullCanvas(canvas);
     };
-    return Window.resizeEvent.forTarget(canvas).listen(onResize);
+    return canvas.onResize.listen(onResize);
   }
 }
