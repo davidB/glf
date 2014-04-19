@@ -78,7 +78,7 @@ class Main {
 
     update(t){
       statsU.start();
-      //window.animationFrame.then(update);
+      window.animationFrame.then(update);
       runner.run();
       debugTexR0.run();
       statsU.stop();
@@ -132,10 +132,10 @@ defaultShade({String c : "normalToColor(n)", String n : "n_de(o, p)"}) {
   vec3 n = $n;
   vec3 nf = faceforward(n, rd, n);
   //return shade1($c, p, nf, t, rd);
-  //return shade0($c, p, nf);
+  return shade0($c, p, nf);
   //return shadeOutdoor($c, p, nf);
   //return aoToColor(p, nf);
-  return normalToColor(n);
+  //return normalToColor(n);
   """;
 }
 
@@ -207,7 +207,7 @@ makeWall(x, y, w, h, [z = 2.0]){
   ..sds = [r.sd_box]
   ..de = "sd_box(p - vec3($x, $y, 0.0), vec3($w,$h,$z))"
   ..mats = [defaultShadeMats]
-  ..sh = defaultShade(c : "vec4(1.0,1.0,1.0,1.0)")
+  ..sh = defaultShade(c : "vec4(0.1,1.0,0.1,1.0)")
   ;
 }
 
@@ -228,6 +228,6 @@ makeWallTexture(gl, textures, z, zSize, offx, offy, unit){
   return r.makeExtrudeZinTex(gl, textures, utex, center, zSize, unit, objs)
   ..mats = [r.n_tex2d, defaultShadeMats]
   //..sh = defaultShade(n : "n_tex2d(p, ${utex}, vec3(${center.x}, ${center.y}, ${center.z}), $zSize, ${1/unit}, ${unit})")
-  ..sh = defaultShade()
+  ..sh = defaultShade(c : "vec4(0.1,1.0,0.1,0.7)")
   ;
 }

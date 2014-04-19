@@ -356,7 +356,7 @@ color mat_chessboardXY0(in vec3 p) {
   //float m = p.x + p.y; // pattern for line
   //float m = fract(p.x) + fract(p.y); // pattern for triangle + m > 1.0
   float m = step(0.5, fract(p.x * $c)) + step(0.5, fract(p.y * $c)) ;
-  mix(vec4(${color1.r}, ${color1.g}, ${color1.b}, ${color1.a}), vec4(${color0.r}, ${color0.g}, ${color0.b}, ${color0.a}) ,m);
+  return mix(vec4(${color1.r}, ${color1.g}, ${color1.b}, ${color1.a}), vec4(${color0.r}, ${color0.g}, ${color0.b}, ${color0.a}) ,m);
 }
 ''');
 }
@@ -436,8 +436,9 @@ vec3 opTx( vec3 p, mat4 m) {
 
 //------------------------------------------------------------------------------
 // Distance estimator
+float matIdIgnored = -1.0;
 void obj_union(inout obj o, float d, float matId) {
-  if (abs(o.x) > abs(d)) {
+  if (matIdIgnored != matId && abs(o.x) > abs(d)) {
     o.x = d;
     o.y = matId;
   }
@@ -500,14 +501,21 @@ color shade(obj o, vec3 p, float t, vec3 rd) {
 
 // front to back
 // GL_ONE_MINUS_DST_ALPHA, GL_ONE
-color blend(color front, color back) {
+color blend2(color front, color back) {
   vec4 c;
   //if (back.a < 0.2) return front;
-  // c.rgb = mix(front.rgb, back.rgb, front.a);
+  //c.rgb = mix(front.rgb, back.rgb, front.a);
   c.rgb = (1.0 - front.a) * back.a * (back.rgb) + front.rgb * front.a;
   c.a = front.a + (1.0 - front.a) * back.a;//(1.0 - src.a) * dst.a;
   //c.a = max(front.a, back.a);
   //c.a = 1.0;
+  return c;
+}
+// try http://en.wikipedia.org/wiki/Alpha_compositing
+color blend(color front, color back) {
+  vec4 c;
+  c.a = front.a + (1.0 - front.a) * back.a;
+  c.rgb = ((1.0 - front.a) * back.a * back.rgb + front.rgb * front.a) * (1.0/c.a);
   return c;
 }
 
@@ -538,17 +546,20 @@ void main(void) {
     p = ro + rd * t;
     o = de(p);
     if (abs(o.x) < EPSILON_DE) {
+      matIdIgnored = -1.0;
       //c.rgb = vec3((t - near)/(far - near));  //display distance (z)
       c = blend(c, shade(o, p, t, rd));
       //c.rgb = vec3(0.0,0.0,0.5);
       //c.rgb = vec3(o.y*0.1, 0.0, 0.0); //display matId
-      c.a = 1.0;
-      if (c.a >= 1.0) break;
-      o.x = max(EPSILON_DE, abs(o.x)) * 1.1;
+      //c.a = 1.0;
+      if (c.a >= 0.9) break;
+      o.x = 0.0;
+      matIdIgnored = o.y;
     }
     t += abs(o.x);
     if (t > far) break;
   }
+  //c.a = 1.0;
   //gl_FragColor= vec4((t - near)/(far - near), 0.0, 0.0, 1.0);  //check last distance
   //gl_FragColor= vec4(rd, 1.0); // check ray direction 
   gl_FragColor= c;
