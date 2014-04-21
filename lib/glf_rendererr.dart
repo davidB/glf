@@ -437,11 +437,10 @@ vec3 opTx( vec3 p, mat4 m) {
 //------------------------------------------------------------------------------
 // Distance estimator
 float matIdIgnored = -1.0;
-void obj_union(inout obj o, float d, float matId) {
-  if (matIdIgnored != matId && abs(o.x) > abs(d)) {
-    o.x = d;
-    o.y = matId;
-  }
+obj obj_union(obj o, float d, float matId) {
+  //if (matIdIgnored != matId && abs(o.x) > abs(d)) { obj(d, matId);}
+  float update = step(abs(d), abs(o.x)) * (step(matId, matIdIgnored) + step(matIdIgnored, matId));
+  return mix(o, vec2(d, matId), update);
 }
 
 obj de(in vec3 p) {
@@ -853,7 +852,7 @@ makeShader(List<ObjectInfo> os, {String tmpl: rayMarchingFrag0, stepmax:256, eps
     if (o.de2 != null) {
       des.add(o.de2);
     } else if (o.de != null) {
-      des.add("obj_union(o, " + o.de +"," + matId.toString() +".0);");
+      des.add("o = obj_union(o, " + o.de +"," + matId.toString() +".0);");
     }
   });
   kv['obj_uniforms'] = os.fold('', (acc, x) => (x.uniforms == null)? acc : (acc + x.uniforms + '\n'));
