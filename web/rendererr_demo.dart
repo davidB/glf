@@ -5,6 +5,7 @@ import 'package:vector_math/vector_math.dart';
 import 'package:asset_pack/asset_pack.dart';
 import 'package:glf/glf.dart' as glf;
 import 'package:glf/glf_rendererr.dart' as r;
+import 'package:glf/glf_asset_pack.dart';
 import 'package:dartemis_toolbox/startstopstats.dart';
 
 import 'utils.dart';
@@ -59,11 +60,19 @@ class Main {
       }
     ;
 
+    var bctrl = new BrightnessCtrl()
+    ..brightness = 0.1
+    ..contrast = 0.3
+    ;
     var textures = new glf.TextureUnitCache(gl);
     var viewport =  new glf.ViewportPlan.defaultSettings(gl.canvas);
     var runner = new r.RendererR(gl);
-    am.loadAndRegisterAsset('filter2d_fxaa', 'filter2d', 'packages/glf/shaders/filters_2d/fxaa.frag', null, null).then((_){
-      runner.filters2d.add(am['filter2d_fxaa']);
+    var factory_filter2d = new Factory_Filter2D()
+    ..am = am
+    ;
+    factory_filter2d.init().then((_){
+      runner.filters2d.add(factory_filter2d.makeFXAA());
+      runner.filters2d.add(factory_filter2d.makeBrightness(bctrl));
     });
     runner.camera = makeCameraRM();
     runner.lightSegment = r.lightSegment_spotAt(new Vector3(2.0, 1.0, 5.0));
