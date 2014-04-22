@@ -3,6 +3,7 @@ library glf_asset_pack;
 import 'dart:async';
 import 'dart:html';
 import 'dart:web_gl' as wgl;
+import 'dart:typed_data';
 import 'package:asset_pack/asset_pack.dart';
 import 'glf.dart';
 
@@ -149,4 +150,81 @@ class Filter2DImporter extends AssetImporter {
     }
     imported.ctx.delete();
   }
+}
+
+class BrightnessCtrl {
+  double brightness = 0.0;
+  double contrast = 0.0;
+  double gamma = 2.2;
+}
+
+class Factory_Filter2D {
+  static const c3_identity =         const[ 0.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 0.0000];
+  static const c3_gaussianBlur =     const[ 0.0450, 0.1220, 0.0450, 0.1220, 0.3320, 0.1220, 0.0450, 0.1220, 0.0450];
+  static const c3_gaussianBlur2 =    const[ 1.0000, 2.0000, 1.0000, 2.0000, 4.0000, 2.0000, 1.0000, 2.0000, 1.0000];
+  static const c3_gaussianBlur3 =    const[ 0.0000, 1.0000, 0.0000, 1.0000, 1.0000, 1.0000, 0.0000, 1.0000, 0.0000];
+  static const c3_unsharpen =        const[-1.0000,-1.0000,-1.0000,-1.0000, 9.0000,-1.0000,-1.0000,-1.0000,-1.0000];
+  static const c3_sharpness =        const[ 0.0000,-1.0000, 0.0000,-1.0000, 5.0000,-1.0000, 0.0000,-1.0000, 0.0000];
+  static const c3_sharpen =          const[-1.0000,-1.0000,-1.0000,-1.0000,16.0000,-1.0000,-1.0000,-1.0000,-1.0000];
+  static const c3_edgeDetect =       const[-0.1250,-0.1250,-0.1250,-0.1250, 1.0000,-0.1250,-0.1250,-0.1250,-0.1250];
+  static const c3_edgeDetect2 =      const[-1.0000,-1.0000,-1.0000,-1.0000, 8.0000,-1.0000,-1.0000,-1.0000,-1.0000];
+  static const c3_edgeDetect3 =      const[-5.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 5.0000];
+  static const c3_edgeDetect4 =      const[-1.0000,-1.0000,-1.0000, 0.0000, 0.0000, 0.0000, 1.0000, 1.0000, 1.0000];
+  static const c3_edgeDetect5 =      const[-1.0000,-1.0000,-1.0000, 2.0000, 2.0000, 2.0000,-1.0000,-1.0000,-1.0000];
+  static const c3_edgeDetect6 =      const[-5.0000,-5.0000,-5.0000,-5.0000,39.0000,-5.0000,-5.0000,-5.0000,-5.0000];
+  static const c3_sobelHorizontal =  const[ 1.0000, 2.0000, 1.0000, 0.0000, 0.0000, 0.0000,-1.0000,-2.0000,-1.0000];
+  static const c3_sobelVertical =    const[ 1.0000, 0.0000,-1.0000, 2.0000, 0.0000,-2.0000, 1.0000, 0.0000,-1.0000];
+  static const c3_previtHorizontal = const[ 1.0000, 1.0000, 1.0000, 0.0000, 0.0000, 0.0000,-1.0000,-1.0000,-1.0000];
+  static const c3_previtVertical =   const[ 1.0000, 0.0000,-1.0000, 1.0000, 0.0000,-1.0000, 1.0000, 0.0000,-1.0000];
+  static const c3_boxBlur =          const[ 0.1110, 0.1110, 0.1110, 0.1110, 0.1110, 0.1110, 0.1110, 0.1110, 0.1110];
+  static const c3_triangleBlur =     const[ 0.0625, 0.1250, 0.0625, 0.1250, 0.2500, 0.1250, 0.0625, 0.1250, 0.0625];
+  static const c3_emboss =           const[-2.0000,-1.0000, 0.0000,-1.0000, 1.0000, 1.0000, 0.0000, 1.0000, 2.0000];
+
+  AssetManager am;
+
+  init() {
+    return Future.wait([
+      am.loadAndRegisterAsset('filter2d_identity', 'filter2d', 'packages/glf/shaders/filters_2d/identity.frag', null, null),
+      am.loadAndRegisterAsset('filter2d_brightness', 'filter2d', 'packages/glf/shaders/filters_2d/brightness.frag', null, null),
+      am.loadAndRegisterAsset('filter2d_convolution3x3', 'filter2d', 'packages/glf/shaders/filters_2d/convolution3x3.frag', null, null),
+      am.loadAndRegisterAsset('filter2d_x_waves', 'filter2d', 'packages/glf/shaders/filters_2d/x_waves.frag', null, null),
+      am.loadAndRegisterAsset('filter2d_fxaa', 'filter2d', 'packages/glf/shaders/filters_2d/fxaa.frag', null, null),
+    ]).then((l) => am);
+
+    /* An alternative to AssetManager would be to use :
+     * HttpRequest.request("packages/glf/shaders/filters_2d/convolution3x3.frag", method: 'GET').then((r) {
+     *    var filter2d = new glf.Filter2D(gl, r.responseText);
+     * });
+     */
+  }
+
+  makeIdentity() {
+    return am['filter2d_identity'];
+  }
+
+  makeFXAA() {
+    return am['filter2d_fxaa'];
+  }
+  makeBrightness(BrightnessCtrl ctrl) {
+    return new Filter2D.copy(am['filter2d_brightness'])
+    ..cfg = (ctx) {
+      ctx.gl.uniform1f(ctx.getUniformLocation('_Brightness'), ctrl.brightness);
+      ctx.gl.uniform1f(ctx.getUniformLocation('_Contrast'), ctrl.contrast);
+      ctx.gl.uniform1f(ctx.getUniformLocation('_InvGamma'), 1.0/ctrl.gamma);
+    };
+  }
+
+  makeConvolution3(List<double> c3_matrix) {
+    var kernel = new Float32List.fromList(c3_matrix);
+    return new Filter2D.copy(am['filter2d_convolution3x3'])
+    ..cfg = (ctx) => ctx.gl.uniform1fv(ctx.getUniformLocation('_Kernel[0]'), kernel)
+    ;
+  }
+
+  makeXWaves(double offset()) {
+    return new Filter2D.copy(am['filter2d_x_waves'])
+    ..cfg = (ctx) => ctx.gl.uniform1f(ctx.getUniformLocation('_Offset'), offset())
+    ;
+  }
+
 }
