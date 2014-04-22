@@ -22,10 +22,14 @@ main(){
   //_x0 = gl.getExtension("OES_standard_derivatives");
   //_x1 = gl.getExtension("OES_texture_float");
   debugTexR0 = new glf.RendererTexture(gl);
-  new Main(gl)
-  ..am = initAssetManager(gl)
-  ..start()
-  ;
+  try {
+    new Main(gl)
+    ..am = initAssetManager(gl)
+    ..start()
+    ;
+  } catch(err) {
+    print(err);
+  }
 }
 
 class Main {
@@ -74,6 +78,7 @@ class Main {
       runner.filters2d.add(factory_filter2d.makeFXAA());
       runner.filters2d.add(factory_filter2d.makeBrightness(bctrl));
     });
+    runner.stepmax = 32;
     runner.camera = makeCameraRM();
     runner.lightSegment = r.lightSegment_spotAt(new Vector3(2.0, 1.0, 5.0));
     runner.register(makeFloor());
@@ -86,13 +91,17 @@ class Main {
 //    }
 
     update(t){
-      statsU.start();
-      window.animationFrame.then(update);
-      runner.run();
-      debugTexR0.run();
-      statsU.stop();
-      statsL.stop();
-      statsL.start();
+      try {
+        statsU.start();
+        window.animationFrame.then(update);
+        runner.run();
+        debugTexR0.run();
+        statsU.stop();
+        statsL.stop();
+        statsL.start();
+      } catch(err, exc) {
+        print(exc);
+      }
     };
     window.animationFrame.then(update);
     document.onKeyDown.listen((e){
