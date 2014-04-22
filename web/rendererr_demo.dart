@@ -151,6 +151,7 @@ defaultShade({String c : "normalToColor(n)", String n : "n_de(o, p)"}) {
   return """
   vec3 n = $n;
   vec3 nf = faceforward(n, rd, n);
+  //return $c;
   //return shade1($c, p, nf, t, rd);
   return shade0($c, p, nf);
   //return shadeOutdoor($c, p, nf);

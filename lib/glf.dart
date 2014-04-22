@@ -438,11 +438,25 @@ _compileShader(RenderingContext gl, String src, int type) {
     var msg = gl.getShaderInfoLog(shader);
     gl.deleteShader(shader);
     shader = null;
-    throw new Exception("An error occurred compiling the shaders: ${status}: ${msg}\n ${src} ");
+    var srcAndLineNum = new SrcCnt().append(src).text;
+    throw new Exception("An error occurred compiling the shaders: ${status}: ${msg}\n${srcAndLineNum}\n\n${status}: ${msg}");
   }
   return shader;
 }
 
+class SrcCnt {
+  String text = "";
+  int cnt = 0;
+
+  append(String src) {
+    var srcAndLineNum = src.split("\n").fold(this, (acc, line){
+      acc.cnt++;
+      acc.text += acc.cnt.toString().padLeft(3, "0") + "  " + line + "\n";
+      return acc;
+    });
+    return this;
+  }
+}
 
 _linkProgram(RenderingContext gl, Shader vertex, Shader fragment, [deleteShaderOnFailure = true]) {
   var program = gl.createProgram();
