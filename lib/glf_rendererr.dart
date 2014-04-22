@@ -498,6 +498,10 @@ color shade(obj o, vec3 p, float t, vec3 rd) {
   return color(0.0, 0.0, 0.0, 0.0);
 }
 
+vec3 bgcolor(vec3 ro, vec3 rd) {
+  \${bgcolor}
+  return 3.*mix(vec3(0.025,0.1,0.05)+rd*0.025,vec3(0.1,0.2,0.3)+rd*0.2,smoothstep(-0.1,0.1,rd.z));
+}
 // front to back
 // GL_ONE_MINUS_DST_ALPHA, GL_ONE
 color blend2(color front, color back) {
@@ -542,29 +546,28 @@ void main(void) {
   float t = near;
   vec3 p;
   float epsilon_de = 0.005;
-  vec4 c = vec4(0.0,0.5,0.5,0.0);
+  vec4 col = vec4(0.0,0.0,0.0,0.0);
   for(int i=0;i< MAXSTEP;i++) {
+    if (col.a >= 0.85 || t > far) break;
     p = ro + rd * t;
     o = de(p);
     //epsilon_de = epsilonPixel * t;
     if (abs(o.x) < epsilon_de) {
       matIdIgnored = -1.0;
       //c.rgb = vec3((t - near)/(far - near));  //display distance (z)
-      c = blend(c, shade(o, p, t, rd));
-      //c.rgb = vec3(0.0,0.0,0.5);
-      //c.rgb = vec3(o.y*0.1, 0.0, 0.0); //display matId
-      //c.a = 1.0;
-      if (c.a >= 0.9) break;
+      col = blend(col, shade(o, p, t, rd));
       o.x = 0.0;
       matIdIgnored = o.y;
     }
     t += abs(o.x);
-    if (t > far) break;
   }
   //c.a = 1.0;
   //gl_FragColor= vec4((t - near)/(far - near), 0.0, 0.0, 1.0);  //check last distance
-  //gl_FragColor= vec4(rd, 1.0); // check ray direction 
-  gl_FragColor= c;
+  //gl_FragColor= vec4(rd, 1.0); // check ray direction
+  vec3 bg=bgcolor(ro, rd);
+  col.rgb+=bg*(1.0-clamp(col.a,0.0,1.0));
+
+  gl_FragColor = vec4(clamp(col.rgb,0.0,1.0),1.0);
 }
 ''';
 
@@ -811,7 +814,7 @@ class ObjectInfo {
   glf.RunOnProgramContext at;
 }
 
-makeShader(List<ObjectInfo> os, {String tmpl: rayMarchingFrag0, stepmax:256, lightSegment}) {
+makeShader(List<ObjectInfo> os, {String tmpl: rayMarchingFrag0, stepmax:256, lightSegment, bgcolor : ""}) {
   var kv = {
    'stepmax' : stepmax,
   };
@@ -821,6 +824,7 @@ makeShader(List<ObjectInfo> os, {String tmpl: rayMarchingFrag0, stepmax:256, lig
   var shs = [];
   var sdss = new LinkedHashSet();
   var des = [];
+
   if (lightSegment != null) {
     lightSegment(matss);
   }
@@ -862,6 +866,7 @@ makeShader(List<ObjectInfo> os, {String tmpl: rayMarchingFrag0, stepmax:256, lig
   kv['obj_des'] = des.fold('', (acc, x) => acc + x + '\n');
   kv['obj_shs'] = shs.fold('', (acc, x) => acc + x + '\n');
   kv['obj_mats'] = matss.fold('', (acc, x) => acc + x + '\n');
+  kv['bgcolor'] = bgcolor;
   return interpolate(tmpl, kv);
 }
 
