@@ -113,8 +113,9 @@ class Main {
 
 makeCameraRM(){
   var camera = new glf.CameraInfo()
-  ..near = 0.0
+  ..near = 0.1
   ..far = 100.0
+  ..fovRadians = degrees2radians * 90.0
   ..position.setValues(0.0, 0.0, 10.0)
   ..upDirection.setValues(0.0, 1.0, 0.0)
   ..focusPosition.setValues(0.0, 0.0, 0.0)

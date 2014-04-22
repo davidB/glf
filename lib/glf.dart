@@ -40,6 +40,8 @@ const SFNAME_FAR = "_Far";
 const SFNAME_VIEWPOSITION = "_ViewPosition";
 const SFNAME_VIEWUP = "_ViewUp";
 const SFNAME_FOCUSPOSITION = "_FocusPosition";
+const SFNAME_FOV = "_Fov";
+const SFNAME_TANHFOV = "_TanHalfFov";
 
 
 /// A class to wrappe a WebGL RenderingContext and print every call

@@ -4,7 +4,14 @@ part of glf;
 
 class CameraInfo {
   /// used by Perpective projection
-  double aspectRatio,fovRadians;
+  double aspectRatio,_fovRadians;
+  ///DO NOT MODIFIED directly, direct access is provided to avoid copy for read
+  double tanHalfFov;
+
+  set fovRadians(double v) {
+    _fovRadians = v;
+    tanHalfFov = math.tan(v * 0.5);
+  }
   /// used by Perpective AND Orthographic projection
   double near,far;
   /// used by Orthographic projection
@@ -29,7 +36,7 @@ class CameraInfo {
     if (isOrthographic) {
       setOrthographicMatrix(projectionMatrix, left, right, bottom, top, near, far);
     } else {
-      setPerspectiveMatrix(projectionMatrix, fovRadians, aspectRatio, near, far); // from vector_math
+      setPerspectiveMatrix(projectionMatrix, _fovRadians, aspectRatio, near, far); // from vector_math
     }
     updateProjectionViewMatrix();
   }

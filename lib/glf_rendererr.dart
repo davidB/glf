@@ -3,6 +3,7 @@ library glf_rendererr;
 
 import 'dart:collection';
 import 'dart:html';
+import 'dart:math' as math;
 import 'dart:web_gl' as webgl;
 import 'package:glf/glf.dart' as glf;
 import 'package:vector_math/vector_math.dart';
@@ -397,7 +398,7 @@ const vec3 eps = vec3(surface*0.5,0.0,0.0);
 varying vec2 vTexCoord0;
 uniform vec3 ${glf.SFNAME_PIXELSIZE};
 uniform vec3 ${glf.SFNAME_VIEWPOSITION}, ${glf.SFNAME_VIEWUP}, ${glf.SFNAME_FOCUSPOSITION};
-uniform float ${glf.SFNAME_NEAR}, ${glf.SFNAME_FAR};
+uniform float ${glf.SFNAME_NEAR}, ${glf.SFNAME_FAR}, ${glf.SFNAME_TANHFOV};
 
 // ro  : the ray origin position (eg: the camera position)
 // rd  : the ray direction for the current pixel
@@ -416,7 +417,6 @@ uniform float ${glf.SFNAME_NEAR}, ${glf.SFNAME_FAR};
 #define color vec4
 
 #define MAXSTEP \${stepmax}
-#define EPSILON_DE \${epsilon_de}
 //------------------------------------------------------------------------------
 // primitive shape (distance functions)
 
@@ -520,31 +520,34 @@ color blend(color front, color back) {
 
 void main(void) {
   float far = ${glf.SFNAME_FAR};
-  float near= ${glf.SFNAME_NEAR};
+  float near = ${glf.SFNAME_NEAR};
   vec3 ro= ${glf.SFNAME_VIEWPOSITION};
 
   // Configuration de la camera.
-  vec3 vuv = ${glf.SFNAME_VIEWUP};
-  vec3 vpn = normalize(${glf.SFNAME_FOCUSPOSITION} - ro);
-  vec3 u = -normalize(cross(vuv,vpn));
-  vec3 v = -cross(vpn,u);
-  vec3 vcv = (ro+vpn);
-  vec2 q = vTexCoord0.xy;
-  vec2 vPos = -1.0 + 2.0 * q;
+  vec3 vz = normalize(ro - ${glf.SFNAME_FOCUSPOSITION});
+  vec3 vup = ${glf.SFNAME_VIEWUP};
+  vec3 vx = normalize(cross(vup,vz));
+  vec3 vy = -cross(vx,vz);
+  vec2 vPos = -1.0 + 2.0 * vTexCoord0.xy; //([-1.0, 1.0], [-1.0, 1.0])
+  float coeff = ${glf.SFNAME_TANHFOV};
   //vec3 scrCoord=vcv+vPos.x*u*_PixelSize.x+vPos.y*v*_PixelSize.y;
-  vec3 scrCoord = vcv+vPos.x*u* ${glf.SFNAME_PIXELSIZE}.z + vPos.y*v;
+  //vec3 scrCoord = vcv+vPos.x*u* ${glf.SFNAME_PIXELSIZE}.z + vPos.y*v;
+  //vec3 scrCoord = ro + vz * -1.0 + vPos.x* vx * ${glf.SFNAME_PIXELSIZE}.z + vPos.y* vy;
+  vec3 scrCoord = ro + vz * -1.0 + vx * vPos.x * coeff * ${glf.SFNAME_PIXELSIZE}.z + vy * vPos.y * coeff;
   vec3 rd=normalize(scrCoord-ro);
-
+  //float epsilonPixel = sin(atan(coeff)) * ${glf.SFNAME_PIXELSIZE}.x;
 
   // Raymarching.
   vec2 o = obj(0.0, 0.0);
   float t = near;
   vec3 p;
+  float epsilon_de = 0.005;
   vec4 c = vec4(0.0,0.5,0.5,0.0);
   for(int i=0;i< MAXSTEP;i++) {
     p = ro + rd * t;
     o = de(p);
-    if (abs(o.x) < EPSILON_DE) {
+    //epsilon_de = epsilonPixel * t;
+    if (abs(o.x) < epsilon_de) {
       matIdIgnored = -1.0;
       //c.rgb = vec3((t - near)/(far - near));  //display distance (z)
       c = blend(c, shade(o, p, t, rd));
@@ -808,10 +811,9 @@ class ObjectInfo {
   glf.RunOnProgramContext at;
 }
 
-makeShader(List<ObjectInfo> os, {String tmpl: rayMarchingFrag0, stepmax:256, epsilon_de: 0.005, lightSegment}) {
+makeShader(List<ObjectInfo> os, {String tmpl: rayMarchingFrag0, stepmax:256, lightSegment}) {
   var kv = {
    'stepmax' : stepmax,
-   'epsilon_de': epsilon_de,
   };
 
   var matss = new LinkedHashSet();
@@ -873,6 +875,7 @@ makeExtrudeZinTex(gl, textures, String utex, Vector3 center, double zSize, doubl
   runner.camera = new glf.CameraInfo()
   ..near = 0.0
   ..far = unit
+  ..fovRadians = degrees2radians * 90
   ..position.setFrom(center)
   ;
   runner.tmpl = distanceFieldFrag0;
@@ -912,7 +915,6 @@ class RendererR {
   glf.CameraInfo camera;
   var tmpl = rayMarchingFrag0;
   var stepmax = 256;
-  var epsilon_de = 0.005;
   var debugPrintFragShader = false;
   var lightSegment = lightSegment0;
   final _os = new List<ObjectInfo>();
@@ -953,7 +955,7 @@ class RendererR {
 
   updateShader() {
     var t0 = window.performance.now();
-    String frag = _makeShader(_os, tmpl:tmpl, stepmax: stepmax, epsilon_de:epsilon_de, lightSegment: lightSegment);
+    String frag = _makeShader(_os, tmpl:tmpl, stepmax: stepmax, lightSegment: lightSegment);
     if (debugPrintFragShader) {
       print("_updateShader : compiling ${frag != _runningFrag}");
     }
@@ -961,6 +963,7 @@ class RendererR {
       _post2d.filters[0] = new glf.Filter2D(gl, frag, (ctx){
         ctx.gl.uniform1f(ctx.getUniformLocation(glf.SFNAME_NEAR), camera.near);
         ctx.gl.uniform1f(ctx.getUniformLocation(glf.SFNAME_FAR), camera.far);
+        ctx.gl.uniform1f(ctx.getUniformLocation(glf.SFNAME_TANHFOV), camera.tanHalfFov);
         ctx.gl.uniform3fv(ctx.getUniformLocation(glf.SFNAME_VIEWPOSITION), camera.position.storage);
         ctx.gl.uniform3fv(ctx.getUniformLocation(glf.SFNAME_VIEWUP), camera.upDirection.storage);
         ctx.gl.uniform3fv(ctx.getUniformLocation(glf.SFNAME_FOCUSPOSITION), camera.focusPosition.storage);
