@@ -84,6 +84,7 @@ class Main {
     runner.register(makeFloor());
     runner.register(makeVDrone(new Vector3(1.0, 2.0, 0.0)));
     runner.register(makeCube());
+    runner.register(makeSphere(-4.0, 4.0, 1.0));
     runner.register(makeWallTexture(gl, textures, 1.0, 1.5, 1.0, 1.0, 3.0));
     runner.updateShader();
 //    for(var i = 0; i < 10; i++){
@@ -217,6 +218,15 @@ makeCube(){
   ..de = "sd_box(p, vec3(1.0,1.0,1.0))"
   ..mats = [defaultShadeMats]
   ..sh = defaultShade()
+  ;
+}
+
+makeSphere(x, y, z){
+  return new r.ObjectInfo()
+  ..sds = [r.sd_sphere]
+  ..de = "sd_sphere(p - vec3($x, $y, $z), 0.5)"
+  ..mats = [defaultShadeMats]
+  ..sh = defaultShade(c : "vec4(1.0,1.0,1.0,1.0)")
   ;
 }
 
