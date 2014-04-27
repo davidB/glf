@@ -522,6 +522,10 @@ color blend(color front, color back) {
   return c;
 }
 
+float random(vec2 n) {
+  return fract(sin(dot(n.xy, vec2(12.9898, 78.233)))* 43758.5453);
+}
+
 void main(void) {
   float far = ${glf.SFNAME_FAR};
   float near = ${glf.SFNAME_NEAR};
@@ -554,7 +558,7 @@ void main(void) {
     //epsilon_de = epsilonPixel * t;
     if (abs(o.x) < epsilon_de) {
       matIdIgnored = -1.0;
-      //c.rgb = vec3((t - near)/(far - near));  //display distance (z)
+      
       col = blend(col, shade(o, p, t, rd));
       o.x = 0.0;
       matIdIgnored = o.y;
@@ -566,8 +570,8 @@ void main(void) {
   //gl_FragColor= vec4(rd, 1.0); // check ray direction
   vec3 bg=bgcolor(ro, rd);
   col.rgb+=bg*(1.0-clamp(col.a,0.0,1.0));
-
-  gl_FragColor = vec4(clamp(col.rgb,0.0,1.0),1.0);
+  gl_FragColor = col + vec4(random(0.1 * vTexCoord0.xy) / 255.0);
+  //gl_FragColor = vec4(clamp(col.rgb,0.0,1.0),1.0);
 }
 ''';
 
@@ -618,14 +622,14 @@ float softshadow( in vec3 ro, in vec3 rd, float mint, float maxt, float k ) {
   float res = 1.0;
   float t = mint;
   for( int i=0; i<30; i++ ) {
-//    if( t<maxt ) {
-//        float h = de( ro + rd*t ).x;
-//        res = min( res, k*h/t );
-//        t += 0.02;
-//    }
-    float h = de(ro + rd*t).x;
-    res = min( res, k*h/t );
-    t += clamp( h, 0.02, 2.0 );
+    if( t<maxt ) {
+        float h = de( ro + rd*t ).x;
+        res = min( res, k*h/t );
+        t += 0.02;
+    }
+//    float h = de(ro + rd*t).x;
+//    res = min( res, k*h/t );
+//    t += clamp( h, 0.02, 2.0 );
   }
   //return res;
   return clamp(res,0.5,1.0);
@@ -708,9 +712,9 @@ shade1(l) {
   l.add('''
 color shade1(color c, vec3 p, vec3 n, float t, vec3 rd) {
   float ao = ao_de(p, n);
-
+  vec3 eye = -rd;
   vec3 lig = normalize( lightSegment(p) );
-  float amb = clamp( 0.5+0.5*n.y, 0.0, 1.0 );
+  float amb = clamp( 0.5+0.5*n.z, 0.0, 1.0 );
   float dif = clamp( dot( n, lig ), 0.0, 1.0 );
   float bac = clamp( dot( n, normalize(vec3(-lig.x,0.0,-lig.z))), 0.0, 1.0 )*clamp( 1.0-p.y,0.0,1.0);
 
@@ -722,9 +726,9 @@ color shade1(color c, vec3 p, vec3 n, float t, vec3 rd) {
   brdf += 0.20*bac*vec3(0.15,0.15,0.15)*ao;
   brdf += 1.20*dif*vec3(1.00,0.90,0.70);
 
-  float pp = clamp(dot(reflect(rd, n), lig), 0.0, 1.0 );
+  float pp = clamp(dot(reflect(eye, n), lig), 0.0, 1.0 );
   float spe = sh*pow(pp, 16.0);
-  float fre = ao*pow(clamp(1.0+dot(n, rd),0.0,1.0), 2.0 );
+  float fre = ao*pow(clamp(1.0+dot(n, eye),0.0,1.0), 2.0 );
 
   vec3 col = c.rgb;
   col = col*brdf + col * vec3(1.0)*spe + 0.2*fre*(0.5+0.5*col);
@@ -795,6 +799,14 @@ color aoToColor(vec3 p, vec3 n) {
   ''');
 }
 
+/// glsl: color normalToColor(vec3 n)
+distToColor(l) {
+l.add('''
+color distToColor(float d, float dmin, float dmax) {
+  return vec4(vec3((d - dmin)/(dmax - dmin)), 1.0);
+}
+''');
+}
 class ObjectInfo {
   /// code used to inject uniform declaration into the shader
   String uniforms;
@@ -837,17 +849,15 @@ makeShader(List<ObjectInfo> os, {String tmpl: rayMarchingFrag0, stepmax:256, lig
         }
       });
     }
-    var matId = shs.indexOf(o.sh) + 1;
-    if (o.sh != null && sh0s.indexOf(o.sh) < 1) {
-      matId = sh0s.length + 1;
-      var str = '';
-      if (matId > 1) {
-        str += 'else ';
-      }
-      str += "if (o.y == " + matId.toString() + ".0) {" + o.sh + "}";
+    var matId = sh0s.indexOf(o.sh);
+    if (o.sh != null && matId < 0) {
+      matId = sh0s.length;
+      var str = (matId > 1)? 'else ' : '';
+      str += "if (o.y == ${matId}.0) {" + o.sh + "}";
       sh0s.add(o.sh);
       shs.add(str);
     }
+
     if (o.sds != null && o.sds.isNotEmpty) {
       o.sds.forEach((sd){
         if (sd != null) {
@@ -858,7 +868,7 @@ makeShader(List<ObjectInfo> os, {String tmpl: rayMarchingFrag0, stepmax:256, lig
     if (o.de2 != null) {
       des.add(o.de2);
     } else if (o.de != null) {
-      des.add("o = obj_union(o, " + o.de +"," + matId.toString() +".0);");
+      des.add("o = obj_union(o, ${o.de}, ${matId}.0);");
     }
   });
   kv['obj_uniforms'] = os.fold('', (acc, x) => (x.uniforms == null)? acc : (acc + x.uniforms + '\n'));
@@ -922,6 +932,7 @@ class RendererR {
   var stepmax = 256;
   var debugPrintFragShader = false;
   var lightSegment = lightSegment0;
+  var bgcolor = "";
   final _os = new List<ObjectInfo>();
   var _needShaderUpdate = true;
   var _runningFrag;
@@ -950,7 +961,7 @@ class RendererR {
   register(ObjectInfo o) {
     _os.add(o);
     _needShaderUpdate = true;
-    print("register : ${o.de}");
+    if (debugPrintFragShader) print("register : ${o.de}");
   }
 
   unregister(ObjectInfo o) {
@@ -960,7 +971,7 @@ class RendererR {
 
   updateShader() {
     var t0 = window.performance.now();
-    String frag = _makeShader(_os, tmpl:tmpl, stepmax: stepmax, lightSegment: lightSegment);
+    String frag = _makeShader(_os, tmpl:tmpl, stepmax: stepmax, lightSegment: lightSegment, bgcolor: bgcolor);
     if (debugPrintFragShader) {
       print("_updateShader : compiling ${frag != _runningFrag}");
     }

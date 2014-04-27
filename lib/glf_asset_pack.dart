@@ -5,6 +5,7 @@ import 'dart:html';
 import 'dart:web_gl' as wgl;
 import 'dart:typed_data';
 import 'package:asset_pack/asset_pack.dart';
+import 'package:vector_math/vector_math.dart';
 import 'glf.dart';
 
 
@@ -189,6 +190,7 @@ class Factory_Filter2D {
       am.loadAndRegisterAsset('filter2d_convolution3x3', 'filter2d', 'packages/glf/shaders/filters_2d/convolution3x3.frag', null, null),
       am.loadAndRegisterAsset('filter2d_x_waves', 'filter2d', 'packages/glf/shaders/filters_2d/x_waves.frag', null, null),
       am.loadAndRegisterAsset('filter2d_fxaa', 'filter2d', 'packages/glf/shaders/filters_2d/fxaa.frag', null, null),
+      am.loadAndRegisterAsset('filter2d_hvblur', 'filter2d', 'packages/glf/shaders/filters_2d/hvblur.frag', null, null),
     ]).then((l) => am);
 
     /* An alternative to AssetManager would be to use :
@@ -219,6 +221,22 @@ class Factory_Filter2D {
     return new Filter2D.copy(am['filter2d_convolution3x3'])
     ..cfg = (ctx) => ctx.gl.uniform1fv(ctx.getUniformLocation('_Kernel[0]'), kernel)
     ;
+  }
+
+  makeHBlur(double radiusInPixel) {
+    return new Filter2D.copy(am['filter2d_hvblur'])
+    ..cfg = (ctx) {
+      ctx.gl.uniform1f(ctx.getUniformLocation('radius'), radiusInPixel);
+      ctx.gl.uniform2fv(ctx.getUniformLocation('dir'), new Vector2(1.0, 0.0).storage);
+    };
+  }
+
+  makeVBlur(double radiusInPixel) {
+    return new Filter2D.copy(am['filter2d_hvblur'])
+    ..cfg = (ctx) {
+      ctx.gl.uniform1f(ctx.getUniformLocation('radius'), radiusInPixel);
+      ctx.gl.uniform2fv(ctx.getUniformLocation('dir'), new Vector2(0.0, 1.0).storage);
+    };
   }
 
   makeXWaves(double offset()) {
