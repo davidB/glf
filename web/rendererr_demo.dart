@@ -71,16 +71,24 @@ class Main {
     var textures = new glf.TextureUnitCache(gl);
     var viewport =  new glf.ViewportPlan.defaultSettings(gl.canvas);
     var runner = new r.RendererR(gl);
-    var factory_filter2d = new Factory_Filter2D()
-    ..am = am
-    ;
-    factory_filter2d.init().then((_){
-      runner.filters2d.add(factory_filter2d.makeFXAA());
-      runner.filters2d.add(factory_filter2d.makeBrightness(bctrl));
-    });
+//    var factory_filter2d = new Factory_Filter2D()
+//    ..am = am
+//    ;
+//    factory_filter2d.init().then((_){
+//      runner.filters2d.add(factory_filter2d.makeFXAA());
+//      runner.filters2d.add(factory_filter2d.makeBrightness(bctrl));
+//    });
     runner.stepmax = 32;
     runner.camera = makeCameraRM();
     runner.lightSegment = r.lightSegment_spotAt(new Vector3(2.0, 1.0, 5.0));
+    runner.shadeAll = """
+        //return col;
+        //return shade1(col, p, nf, t, rd);
+        col = shade0(col, p, nf);
+        //return shadeOutdoor(col, p, nf);
+        //return aoToColor(p, nf);
+        //return normalToColor(n);
+        """;
     runner.register(makeFloor());
     runner.register(makeVDrone(new Vector3(1.0, 2.0, 0.0)));
     runner.register(makeCube());
@@ -147,19 +155,6 @@ defaultShadeMats(l) {
   r.shadeOutdoor(l);
 }
 
-defaultShade({String c : "normalToColor(n)", String n : "n_de(o, p)"}) {
-  return """
-  vec3 n = $n;
-  vec3 nf = faceforward(n, rd, n);
-  //return $c;
-  //return shade1($c, p, nf, t, rd);
-  return shade0($c, p, nf);
-  //return shadeOutdoor($c, p, nf);
-  //return aoToColor(p, nf);
-  //return normalToColor(n);
-  """;
-}
-
 makeVDrone(Vector3 t){
   var a1 = new Vector3(2.0, 0.0, 1.0).add(t);
   var a2 = new Vector3(-1.0,-1.0, 1.0).add(t);
@@ -195,7 +190,7 @@ float sd_tetrahedron(vec3 p, vec3 a1, vec3 a2, vec3 a3, vec3 a4){
 """)
 ]
   ..mats = [defaultShadeMats]
-  ..sh = defaultShade(c : "vec4(0.5, 0.0, 0.0, 1.0)")
+  ..sh = "vec4(0.5, 0.0, 0.0, 1.0)"
   ..at = (ctx){
     ctx.gl.uniform3fv(ctx.getUniformLocation("a1"), a1.storage);
     ctx.gl.uniform3fv(ctx.getUniformLocation("a2"), a2.storage);
@@ -210,7 +205,7 @@ makeFloor(){
   ..de = "sd_flatFloor(p)"
   ..sds = [r.sd_flatFloor(1.0)]
   ..mats = [r.mat_chessboardXY0(1.0, new Vector4(0.9,0.0,0.5,1.0), new Vector4(0.2,0.2,0.8,1.0)), defaultShadeMats]
-  ..sh = defaultShade(c : "mat_chessboardXY0(p)")
+  ..sh = "mat_chessboardXY0(p)";
   ;
 }
 
@@ -218,8 +213,8 @@ makeCube(){
   return new r.ObjectInfo()
   ..sds = [r.sd_box]
   ..de = "sd_box(p, vec3(1.0,1.0,1.0))"
-  ..mats = [defaultShadeMats]
-  ..sh = defaultShade()
+  ..mats = [r.normalToColor]
+  ..sh = "normalToColor(nf)";
   ;
 }
 
@@ -228,7 +223,7 @@ makeSphere(x, y, z){
   ..sds = [r.sd_sphere]
   ..de = "sd_sphere(p - vec3($x, $y, $z), 0.5)"
   ..mats = [defaultShadeMats]
-  ..sh = defaultShade(c : "vec4(1.0,1.0,1.0,1.0)")
+  ..sh = "vec4(1.0,1.0,1.0,1.0)"
   ;
 }
 
@@ -237,7 +232,7 @@ makeWall(x, y, w, h, [z = 2.0]){
   ..sds = [r.sd_box]
   ..de = "sd_box(p - vec3($x, $y, 0.0), vec3($w,$h,$z))"
   ..mats = [defaultShadeMats]
-  ..sh = defaultShade(c : "vec4(0.1,1.0,0.1,1.0)")
+  ..sh = "vec4(0.1,1.0,0.1,1.0)"
   ;
 }
 
@@ -258,6 +253,6 @@ makeWallTexture(gl, textures, z, zSize, offx, offy, unit){
   return r.makeExtrudeZinTex(gl, textures, utex, center, zSize, unit, objs)
   ..mats = [r.n_tex2d, defaultShadeMats]
   //..sh = defaultShade(n : "n_tex2d(p, ${utex}, vec3(${center.x}, ${center.y}, ${center.z}), $zSize, ${1/unit}, ${unit})")
-  ..sh = defaultShade(c : "vec4(0.1,1.0,0.1,0.7)")
+  ..sh = "vec4(0.1,1.0,0.1,0.7)"
   ;
 }

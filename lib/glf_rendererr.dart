@@ -349,11 +349,11 @@ float sd_lineXY(vec2 p, vec2 v, vec2 w) {
   ''');
 }
 
-/// glsl: color mat_chessboardXY0(in vec3 p)
+/// glsl: vec4 mat_chessboardXY0(in vec3 p)
 mat_chessboardXY0(size, Vector4 color0, Vector4 color1) {
   var c = 0.5 / size;
   return (l) => l.add('''
-color mat_chessboardXY0(in vec3 p) {
+vec4 mat_chessboardXY0(in vec3 p) {
   //float m = p.x + p.y; // pattern for line
   //float m = fract(p.x) + fract(p.y); // pattern for triangle + m > 1.0
   float m = step(0.5, fract(p.x * $c)) + step(0.5, fract(p.y * $c)) ;
@@ -362,10 +362,10 @@ color mat_chessboardXY0(in vec3 p) {
 ''');
 }
 
-/// glsl: color mat_chessboardXY1(in vec3 p)
+/// glsl: vec4 mat_chessboardXY1(in vec3 p)
 mat_chessboardXY1(ratiox, ratioy, Vector4 color0, Vector4 color1, Vector4 color2, Vector4 color3) {
   return (l) => l.add('''
-color mat_chessboardXY1(in vec3 p){
+vec4 mat_chessboardXY1(in vec3 p){
   if (fract(p.x*$ratiox)>$ratiox){
     if (fract(p.y*$ratioy)>$ratioy)
       return vec4(${color0.r}, ${color0.g}, ${color0.b}, ${color0.a});
@@ -412,11 +412,6 @@ uniform float ${glf.SFNAME_NEAR}, ${glf.SFNAME_FAR}, ${glf.SFNAME_TANHFOV};
 // obj.x : distance of the object
 // obj.y : id of the object 's material
 
-// type alias
-#define obj vec2
-#define color vec4
-
-#define MAXSTEP \${stepmax}
 //------------------------------------------------------------------------------
 // primitive shape (distance functions)
 
@@ -437,14 +432,14 @@ vec3 opTx( vec3 p, mat4 m) {
 //------------------------------------------------------------------------------
 // Distance estimator
 float matIdIgnored = -1.0;
-obj obj_union(obj o, float d, float matId) {
-  //if (matIdIgnored != matId && abs(o.x) > abs(d)) { obj(d, matId);}
+vec2 obj_union(vec2 o, float d, float matId) {
+  //if (matIdIgnored != matId && abs(o.x) > abs(d)) { vec2(d, matId);}
   float update = step(abs(d), abs(o.x)) * (step(matId, matIdIgnored) + step(matIdIgnored, matId));
   return mix(o, vec2(d, matId), update);
 }
 
-obj de(in vec3 p) {
-  obj o = vec2(${glf.SFNAME_FAR}, 0.0);
+vec2 de(in vec3 p) {
+  vec2 o = vec2(${glf.SFNAME_FAR}, 0.0);
   \${obj_des}
   return o;
 }
@@ -471,7 +466,7 @@ void main(void) {
 
 
   vec3 p = ro + rd;
-  obj o = de(p);
+  vec2 o = de(p);
   float d = o.x;
   //gl_FragColor.r = abs(p.y);
   //gl_FragColor.r = clamp(o.x, 0.0, 1.0);
@@ -493,18 +488,21 @@ ${sdHeaderFrag0}
 \${obj_mats}
 
 
-color shade(obj o, vec3 p, float t, vec3 rd) {
+vec4 shade(vec2 o, vec3 p, float t, vec3 rd) {
+  vec4 col = vec4(0.0);
+  vec3 n = n_de(p);
+  vec3 nf = faceforward(n, rd, n);
   \${obj_shs}
-  return color(0.0, 0.0, 0.0, 0.0);
+  return col;
 }
 
-vec3 bgcolor(vec3 ro, vec3 rd) {
+vec3 bgColor(vec3 ro, vec3 rd) {
   \${bgcolor}
   return 3.*mix(vec3(0.025,0.1,0.05)+rd*0.025,vec3(0.1,0.2,0.3)+rd*0.2,smoothstep(-0.1,0.1,rd.z));
 }
 // front to back
 // GL_ONE_MINUS_DST_ALPHA, GL_ONE
-color blend2(color front, color back) {
+vec4 blend2(vec4 front, vec4 back) {
   vec4 c;
   //if (back.a < 0.2) return front;
   //c.rgb = mix(front.rgb, back.rgb, front.a);
@@ -515,7 +513,7 @@ color blend2(color front, color back) {
   return c;
 }
 // try http://en.wikipedia.org/wiki/Alpha_compositing
-color blend(color front, color back) {
+vec4 blend(vec4 front, vec4 back) {
   vec4 c;
   c.a = front.a + (1.0 - front.a) * back.a;
   c.rgb = ((1.0 - front.a) * back.a * back.rgb + front.rgb * front.a) * (1.0/c.a);
@@ -546,29 +544,36 @@ void main(void) {
   //float epsilonPixel = sin(atan(coeff)) * ${glf.SFNAME_PIXELSIZE}.x;
 
   // Raymarching.
-  vec2 o = obj(0.0, 0.0);
+  vec2 o = vec2(0.0, 0.0);
   float t = near;
   vec3 p;
   float epsilon_de = 0.005;
-  vec4 col = vec4(0.0,0.0,0.0,0.0);
-  for(int i=0;i< MAXSTEP;i++) {
-    if (col.a >= 0.85 || t > far) break;
-    p = ro + rd * t;
-    o = de(p);
-    //epsilon_de = epsilonPixel * t;
-    if (abs(o.x) < epsilon_de) {
-      matIdIgnored = -1.0;
-      
-      col = blend(col, shade(o, p, t, rd));
-      o.x = 0.0;
-      matIdIgnored = o.y;
+  float found = 0.0;
+  for(int i=0;i< \${stepmax};i++) {
+    if (t < far && found < 1.0) {
+      p = ro + rd * t;
+      o = de(p);
+      //epsilon_de = epsilonPixel * t;
+      found = step(abs(o.x), epsilon_de);
+      t += abs(o.x);
     }
-    t += abs(o.x);
   }
+  //t += o.x;
+  //p = ro + rd * t;
+  //vec4 col = vec4(vec3(o.y*0.1), 1.0);
+  vec4 col = mix(vec4(0.0), shade(o, p, t, rd), vec4(found));
+//      if (abs(o.x) < epsilon_de) {
+//        matIdIgnored = -1.0;
+//        
+//        col = blend(col, shade(o, p, t, rd));
+//        o.x = 0.0;
+//        matIdIgnored = o.y;
+//      }
+
   //c.a = 1.0;
   //gl_FragColor= vec4((t - near)/(far - near), 0.0, 0.0, 1.0);  //check last distance
   //gl_FragColor= vec4(rd, 1.0); // check ray direction
-  vec3 bg=bgcolor(ro, rd);
+  vec3 bg=bgColor(ro, rd);
   col.rgb+=bg*(1.0-clamp(col.a,0.0,1.0));
   gl_FragColor = col + vec4(random(0.1 * vTexCoord0.xy) / 255.0);
   //gl_FragColor = vec4(clamp(col.rgb,0.0,1.0),1.0);
@@ -639,10 +644,10 @@ float softshadow( in vec3 ro, in vec3 rd, float mint, float maxt, float k ) {
 }
 
 /// calcul normal from gradient via de(..)
-/// glsl: vec3 n_de(vec2 o, vec3 p) {
+/// glsl: vec3 n_de(vec3 p) {
 n_de(l) {
   l.add('''
-vec3 n_de(vec2 o, vec3 p) {
+vec3 n_de(vec3 p) {
   vec3 nor;
   nor.x = de(p+eps.xyy).x - de(p-eps.xyy).x;
   nor.y = de(p+eps.yxy).x - de(p-eps.yxy).x;
@@ -687,11 +692,11 @@ lightSeg_spot(l){
   ''');
 }
 
-/// glsl: color shade0(color c, vec3 p, vec3 n)
+/// glsl: vec4 shade0(vec4 c, vec3 p, vec3 n)
 shade0(l) {
   softshadow(l);
   l.add('''
-color shade0(color c, vec3 p, vec3 n) {
+vec4 shade0(vec4 c, vec3 p, vec3 n) {
   vec3 lightDir = normalize(lightSegment(p));
   float ambient = 0.5;
   float lightIntensity = max(0.0, dot(n, lightDir));
@@ -710,7 +715,7 @@ shade1(l) {
   softshadow(l);
   ao_de(l);
   l.add('''
-color shade1(color c, vec3 p, vec3 n, float t, vec3 rd) {
+vec4 shade1(vec4 c, vec3 p, vec3 n, float t, vec3 rd) {
   float ao = ao_de(p, n);
   vec3 eye = -rd;
   vec3 lig = normalize( lightSegment(p) );
@@ -739,12 +744,12 @@ color shade1(color c, vec3 p, vec3 n, float t, vec3 rd) {
   ''');
 }
 
-/// glsl: color shadeOutdoor(color material, vec3 p, vec3 n, vec3 lightSegment)
+/// glsl: vec4 shadeOutdoor(vec4 material, vec3 p, vec3 n, vec3 lightSegment)
 shadeOutdoor(l) {
   softshadow(l);
   ao_de(l);
   l.add('''
-color shadeOutdoor(color c, vec3 p, vec3 n) {
+vec4 shadeOutdoor(vec4 c, vec3 p, vec3 n) {
   // lighting terms
   float occ = ao_de(p, n);
   vec3 sunDir = normalize(lightSegment(p));
@@ -772,10 +777,10 @@ color shadeOutdoor(color c, vec3 p, vec3 n) {
   ''');
 }
 
-/// glsl: color normalToColor(vec3 n)
+/// glsl: vec4 normalToColor(vec3 n)
 normalToColor(l) {
   l.add('''
-color normalToColor(vec3 n) {
+vec4 normalToColor(vec3 n) {
   return vec4(n.xy* 0.5 + 0.5,  n.z* 0.4 + 0.6, 1.0);
 }
   ''');
@@ -783,26 +788,26 @@ color normalToColor(vec3 n) {
 
 matIdToColor(l) {
   l.add('''
-color matIdToColor(float m) {
+vec4 matIdToColor(float m) {
   return vec4(vec3(0.6) + 0.4*sin( vec3(0.05,0.08,0.10)*(m-1.0) ), 1.0);
 }
   ''');
 }
 
-/// glsl: color normalToColor(vec3 n)
+/// glsl: vec4 normalToColor(vec3 n)
 aoToColor(l) {
   ao_de(l);
   l.add('''
-color aoToColor(vec3 p, vec3 n) {
+vec4 aoToColor(vec3 p, vec3 n) {
   return vec4(vec3(ao_de(p, n)), 1.0);
 }
   ''');
 }
 
-/// glsl: color normalToColor(vec3 n)
+/// glsl: vec4 normalToColor(vec3 n)
 distToColor(l) {
 l.add('''
-color distToColor(float d, float dmin, float dmax) {
+vec4 distToColor(float d, float dmin, float dmax) {
   return vec4(vec3((d - dmin)/(dmax - dmin)), 1.0);
 }
 ''');
@@ -826,7 +831,7 @@ class ObjectInfo {
   glf.RunOnProgramContext at;
 }
 
-makeShader(List<ObjectInfo> os, {String tmpl: rayMarchingFrag0, stepmax:256, lightSegment, bgcolor : ""}) {
+makeShader(List<ObjectInfo> os, {String tmpl: rayMarchingFrag0, stepmax:256, lightSegment, bgcolor : "", shadeAll: ""}) {
   var kv = {
    'stepmax' : stepmax,
   };
@@ -852,10 +857,13 @@ makeShader(List<ObjectInfo> os, {String tmpl: rayMarchingFrag0, stepmax:256, lig
     var matId = sh0s.indexOf(o.sh);
     if (o.sh != null && matId < 0) {
       matId = sh0s.length;
-      var str = (matId > 1)? 'else ' : '';
-      str += "if (o.y == ${matId}.0) {" + o.sh + "}";
+      //var str = (matId > 0)? 'else ' : '';
+      //str += "if (o.y == ${matId}.0) { col = shade_mat${matId}(o, p, t, rd);}";
+      //var str = "col = mix(col, shade_mat${matId}(o, p, t, rd), step(${matId-1}.5, o.y));";
+      var str = "col = mix(col, ${o.sh}, step(${matId-1}.5, o.y));";
       sh0s.add(o.sh);
       shs.add(str);
+      //matss.add("""vec4 shade_mat${matId}(vec2 o, vec3 p, float t, vec3 rd){\n${o.sh}\n}""");
     }
 
     if (o.sds != null && o.sds.isNotEmpty) {
@@ -874,7 +882,7 @@ makeShader(List<ObjectInfo> os, {String tmpl: rayMarchingFrag0, stepmax:256, lig
   kv['obj_uniforms'] = os.fold('', (acc, x) => (x.uniforms == null)? acc : (acc + x.uniforms + '\n'));
   kv['obj_sds'] = sdss.fold('', (acc, x) => acc + x + '\n');
   kv['obj_des'] = des.fold('', (acc, x) => acc + x + '\n');
-  kv['obj_shs'] = shs.fold('', (acc, x) => acc + x + '\n');
+  kv['obj_shs'] = shs.fold('', (acc, x) => acc + x + '\n') + shadeAll + '\n';
   kv['obj_mats'] = matss.fold('', (acc, x) => acc + x + '\n');
   kv['bgcolor'] = bgcolor;
   return interpolate(tmpl, kv);
@@ -933,6 +941,7 @@ class RendererR {
   var debugPrintFragShader = false;
   var lightSegment = lightSegment0;
   var bgcolor = "";
+  var shadeAll = "";
   final _os = new List<ObjectInfo>();
   var _needShaderUpdate = true;
   var _runningFrag;
@@ -971,7 +980,7 @@ class RendererR {
 
   updateShader() {
     var t0 = window.performance.now();
-    String frag = _makeShader(_os, tmpl:tmpl, stepmax: stepmax, lightSegment: lightSegment, bgcolor: bgcolor);
+    String frag = _makeShader(_os, tmpl:tmpl, stepmax: stepmax, lightSegment: lightSegment, bgcolor: bgcolor, shadeAll: shadeAll);
     if (debugPrintFragShader) {
       print("_updateShader : compiling ${frag != _runningFrag}");
     }
